@@ -1,3 +1,4 @@
+import sys,os;sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 """Verifies that the memory class works as expected."""
 import pytest
 
@@ -87,3 +88,9 @@ def test_write_vector(i: int) -> None:
     memory = m6502.Memory()
     memory[i] = 0xA5
     assert memory[i] == 0xA5
+
+test_init_memory_size(5000)
+test_init_memory_valueerror(100)
+test_write_zero_page(11)
+test_write_stack(150)
+test_write_vector(0xFFFC)

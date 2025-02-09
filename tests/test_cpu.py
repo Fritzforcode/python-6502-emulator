@@ -1,3 +1,4 @@
+import sys,os;sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 """Verifies that the processor class works as expected."""
 import m6502
 
@@ -220,3 +221,14 @@ def test_cpu_fetch_word() -> None:
         cpu.flag_i,
         value,
     ) == (0xFCE4, 0x01FD, 2, True, False, True, 0x5AA5)
+
+
+test_cpu_reset()
+test_cpu_read_byte()
+test_cpu_read_word()
+test_cpu_write_byte()
+test_cpu_write_word()
+test_cpu_read_write_byte()
+test_cpu_read_write_word()
+test_cpu_fetch_byte()
+test_cpu_fetch_word()
