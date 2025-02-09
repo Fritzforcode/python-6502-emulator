@@ -266,142 +266,7 @@ def P_execute(self: dict, cycles: int = 0) -> None:
 # TODO: ENSURE CYCLE COUNT             #
 ########################################
 
-
-"""MOT-6502 Instruction Helper Functions."""
-def P_help_adc(self, operand: int) -> None:
-    if self["flag_d"]:  # Decimal Mode
-        low = (self["reg_a"] & 0x0F) + (operand & 0x0F) + int(self["flag_c"])
-        if low > 9:
-            low += 6
-        high = (self["reg_a"] >> 4) + (operand >> 4) + (low > 15)
-        if high > 9:
-            high += 6
-        result = (high << 4) | (low & 0x0F)
-    else:  # Binary Mode
-        result = self["reg_a"] + operand + int(self["flag_c"])
-
-    self, _ = P_evaluate_flag_c(self, result, bcd=self["flag_d"])
-    self, _ = P_evaluate_flag_z(self, result)
-    self, _ = P_evaluate_flag_n(self, result)
-    self["flag_v"] = bool(~(self["reg_a"] ^ operand) & (self["reg_a"] ^ result) & 0x80)
-    self["reg_a"] = result & 0xFF
-    return self, None
-
 """MOT-6502 Instructions."""
-def P_ins_adc_inx(self: dict) -> None:
-    """
-    ADC - Add with carry, Indexed Indirect.
-
-    :return: None
-    """
-    self, t1 = P_fetch_byte(self)
-    zp_addr  = (t1 + self["reg_x"]) & 0xFF
-    addr     = M_read_word(self["memory"], zp_addr)
-    operand  = M___getitem__(self["memory"], addr)
-    self, _  = P_help_adc(self, operand)
-    return self, None
-
-def P_ins_adc_iny(self: dict) -> None:
-    """
-    ADC - Add with carry, Indexed Indirect.
-
-    :return: None
-    """
-    self, zp_addr = P_fetch_byte(self)
-    base_addr = M_read_word(self["memory"], zp_addr)
-    operand = M___getitem__(self["memory"], base_addr + self["reg_y"])
-    self, _ = P_help_adc(self, operand)
-    return self, None
-
-def P_ins_adc_zp(self: dict) -> None:
-    """
-    ADC - Add with carry, Zero Page.
-
-    :return: None
-    """
-    self, addr = P_fetch_byte(self)
-    operand = M___getitem__(self["memory"], addr)
-    self, _ = P_help_adc(self, operand)
-    self["cycles"] += 2
-    return self, None
-
-def P_ins_adc_zpx(self: dict) -> None:
-    """
-    ADC - Add with carry, Zero Page, X-Indexed Indirect.
-
-    :return: None
-    """
-    self, base_addr = P_fetch_byte(self)
-    addr = (base_addr + self["reg_x"]) & 0xFF
-    operand = M___getitem__(self["memory"], addr)
-    self, _ = P_help_adc(self, operand)
-    self["cycles"] += 3
-    return self, None
-
-def P_ins_adc_imm(self: dict) -> None:
-    """
-    ADC - Add with carry, Immediate.
-
-    :return: None
-    """
-    self, operand = P_fetch_byte(self)
-    self, _ = P_help_adc(self, operand)
-    self["cycles"] += 1
-    return self, None
-
-def P_ins_adc_abx(self: dict) -> None:
-    """
-    ADC - Add with carry, Absolute, X.
-
-    :return: None
-    """
-    self, base_addr = P_fetch_word(self)
-    addr = base_addr + self["reg_x"]
-    operand = M___getitem__(self["memory"], addr)
-    self, _ = P_help_adc(self, operand)
-    self["cycles"] += 2
-    if addr > 0xFF: self["cycles"] += 1
-    return self, None
-
-def P_ins_adc_aby(self: dict) -> None:
-    """
-    ADC - Add with carry, Absolute, Y.
-
-    :return: None
-    """
-    self, base_addr = P_fetch_word(self)
-    addr = base_addr + self["reg_y"]
-    operand = M___getitem__(self["memory"], addr)
-    self, _ = P_help_adc(self, operand)
-    self["cycles"] += 2
-    if addr > 0xFF: self["cycles"] += 1
-    return self, None
-    
-def P_ins_adc_abs(self: dict) -> None:
-    """
-    ADC - Add with carry, Absolute.
-
-    :return: None
-    """
-    self, addr = P_fetch_word(self)
-    operand = M___getitem__(self["memory"], addr)
-    self, _ = P_help_adc(self, operand)
-    self["cycles"] += 2
-    return self, None
-
-
-def P_ins_and_(self: dict) -> None:
-    """
-    ADC - And Memory with Accumulator, .
-
-    :return: None
-    """
-    self, addr = P_fetch_word(self)
-    operand = M___getitem__(self["memory"], addr)
-    self, _ = P_help_adc(self, operand)
-    return self, None
-
-
 
 def P_ins_nop_imp(self: dict) -> None:
     """
@@ -411,6 +276,411 @@ def P_ins_nop_imp(self: dict) -> None:
     """
     self["cycles"] += 1
     return self, None
+
+def P_ins_adc_imm(self: dict) -> None:
+    """
+    ADC - Add with Carry, Immediate.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self["reg_a"] = t1 + t2
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_adc_zp(self: dict) -> None:
+    """
+    ADC - Add with Carry, Zero Page.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_byte(self, t2)
+    self["reg_a"] = t1 + t3
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_adc_zpx(self: dict) -> None:
+    """
+    ADC - Add with Carry, Zero Page, X.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_register_x(self)
+    self, t4 = P_read_byte(self, (t2 + t3) & 0xFF)
+    self["reg_a"] = t1 + t4
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_adc_abs(self: dict) -> None:
+    """
+    ADC - Add with Carry, Absolute.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_byte(self, t2)
+    self["reg_a"] = t1 + t3
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_adc_abx(self: dict) -> None:
+    """
+    ADC - Add with Carry, Absolute, X.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_register_x(self)
+    self, t4 = P_read_byte(self, t2 + t3)
+    self["reg_a"] = t1 + t4
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_adc_aby(self: dict) -> None:
+    """
+    ADC - Add with Carry, Absolute, Y.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_register_y(self)
+    self, t4 = P_read_byte(self, t2 + t3)
+    self["reg_a"] = t1 + t4
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_adc_inx(self: dict) -> None:
+    """
+    ADC - Add with Carry, Indexed Indirect.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_register_x(self)
+    self, t4 = P_read_byte(self, t2 + t3)
+    self["reg_a"] = t1 + t4
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_adc_iny(self: dict) -> None:
+    """
+    ADC - Add with Carry, Indirect Indexed.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_byte(self, t2)
+    self, t4 = P_read_register_y(self)
+    self["reg_a"] = t1 + t3 + t4
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_and_imm(self: dict) -> None:
+    """
+    AND - Logical AND, Immediate.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self["reg_a"] = t1 & t2
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_and_zp(self: dict) -> None:
+    """
+    AND - Logical AND, Zero Page.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_byte(self, t2)
+    self["reg_a"] = t1 & t3
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_and_zpx(self: dict) -> None:
+    """
+    AND - Logical AND, Zero Page, X.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_register_x(self)
+    self, t4 = P_read_byte(self, (t2 + t3) & 0xFF)
+    self["reg_a"] = t1 & t4
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_and_abs(self: dict) -> None:
+    """
+    AND - Logical AND, Absolute.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_byte(self, t2)
+    self["reg_a"] = t1 & t3
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_and_abx(self: dict) -> None:
+    """
+    AND - Logical AND, Absolute, X.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_register_x(self)
+    self, t4 = P_read_byte(self, t2 + t3)
+    self["reg_a"] = t1 & t4
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_and_aby(self: dict) -> None:
+    """
+    AND - Logical AND, Absolute, Y.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_register_y(self)
+    self, t4 = P_read_byte(self, t2 + t3)
+    self["reg_a"] = t1 & t4
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_and_inx(self: dict) -> None:
+    """
+    AND - Logical AND, Indexed Indirect.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_register_x(self)
+    self, t4 = P_read_byte(self, t2 + t3)
+    self["reg_a"] = t1 & t4
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_and_iny(self: dict) -> None:
+    """
+    AND - Logical AND, Indirect Indexed.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_byte(self, t2)
+    self, t4 = P_read_register_y(self)
+    self["reg_a"] = t1 & t3 + t4
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_asl_acc(self: dict) -> None:
+    """
+    ASL - Arithmetic Shift Left, Accumulator.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self["reg_a"] = t1 << 1
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self["cycles"] += 1
+
+def P_ins_asl_zp(self: dict) -> None:
+    """
+    ASL - Arithmetic Shift Left, Zero Page.
+    :return: None
+    """
+    address = P_fetch_byte(self)
+    self, t1 = P_read_byte(self, address)
+    self, _ = P_write_byte(self, address, t1 << 1)
+    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self["cycles"] += 1
+
+def P_ins_asl_zpx(self: dict) -> None:
+    """
+    ASL - Arithmetic Shift Left, Zero Page, X.
+    :return: None
+    """
+    self, t1 = P_fetch_byte(self)
+    self, t2 = P_read_register_x(self)
+    address = (t1 + t2) & 0xFF
+    self, t3 = P_read_byte(self, address)
+    self, _ = P_write_byte(self, address, t3 << 1)
+    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self["cycles"] += 1
+
+def P_ins_asl_abs(self: dict) -> None:
+    """
+    ASL - Arithmetic Shift Left, Absolute.
+    :return: None
+    """
+    address = P_fetch_word(self)
+    self, t1 = P_read_byte(self, address)
+    self, _ = P_write_byte(self, address, t1 << 1)
+    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self["cycles"] += 1
+
+def P_ins_asl_abx(self: dict) -> None:
+    """
+    ASL - Arithmetic Shift Left, Absolute, X.
+    :return: None
+    """
+    self, t1 = P_fetch_word(self)
+    self, t2 = P_read_register_x(self)
+    address = t1 + t2
+    self, t3 = P_read_byte(self, address)
+    self, _ = P_write_byte(self, address, t3 << 1)
+    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self["cycles"] += 1
+
+def P_ins_bcc_rel(self: dict) -> None:
+    """
+    BCC - Branch if Carry Clear.
+    :return: None
+    """
+    if not self["flag_c"]:
+        self, t1 = P_fetch_byte(self)
+        self["program_counter"] += t1
+        self["cycles"] += 1
+
+def P_ins_bcs_rel(self: dict) -> None:
+    """
+    BCS - Branch if Carry Set.
+    :return: None
+    """
+    if self["flag_c"]:
+        self, t1 = P_fetch_byte(self)
+        self["program_counter"] += t1
+        self["cycles"] += 1
+
+def P_ins_beq_rel(self: dict) -> None:
+    """
+    BEQ - Branch if Equal.
+    :return: None
+    """
+    if self["flag_z"]:
+        self, t1 = P_fetch_byte(self)
+        self["program_counter"] += t1
+        self["cycles"] += 1
+
+def P_ins_bit_zp(self: dict) -> None:
+    """
+    BIT - Bit Test, Zero Page.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_byte(self, t2)
+    self["reg_a"] = t1 & t3
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, t4 = P_fetch_byte(self)
+    self, t5 = P_read_byte(self, t4)
+    self["flag_v"] = (t5 & 0x40) != 0
+    self["cycles"] += 1
+
+def P_ins_bit_abs(self: dict) -> None:
+    """
+    BIT - Bit Test, Absolute.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_byte(self, t2)
+    self["reg_a"] = t1 & t3
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, t4 = P_fetch_word(self)
+    self, t5 = P_read_byte(self, t4)
+    self["flag_v"] = (t5 & 0x40) != 0
+    self["cycles"] += 1
+
+def P_ins_bmi_rel(self: dict) -> None:
+    """
+    BMI - Branch if Minus.
+    :return: None
+    """
+    if self["flag_n"]:
+        self, t1 = P_fetch_byte(self)
+        self["program_counter"] += t1
+        self["cycles"] += 1
+
+def P_ins_bne_rel(self: dict) -> None:
+    """
+    BNE - Branch if Not Equal.
+    :return: None
+    """
+    if not self["flag_z"]:
+        self, t1 = P_fetch_byte(self)
+        self["program_counter"] += t1
+        self["cycles"] += 1
+
+def P_ins_bpl_rel(self: dict) -> None:
+    """
+    BPL - Branch if Positive.
+    :return: None
+    """
+    if not self["flag_n"]:
+        self, t1 = P_fetch_byte(self)
+        self["program_counter"] += t1
+        self["cycles"] += 1
+
+def P_ins_brk_imp(self: dict) -> None:
+    """
+    BRK - Force Interrupt.
+    :return: None
+    """
+    self["flag_b"] = True
+    self, _ = P_push(self, (self["program_counter"] >> 8) & 0xFF)
+    self, _ = P_push(self, self["program_counter"] & 0xFF)
+    self, _ = P_push(self, self["flag_c"])
+    self["flag_i"] = True
+    self, t1 = P_read_word(self, 0xFFFE)
+    self["program_counter"] = t1
+    self["cycles"] += 1
+
+def P_ins_bvc_rel(self: dict) -> None:
+    """
+    BVC - Branch if Overflow Clear.
+    :return: None
+    """
+    if not self["flag_v"]:
+        self, t1 = P_fetch_byte(self)
+        self["program_counter"] += t1
+        self["cycles"] += 1
+
+def P_ins_bvs_rel(self: dict) -> None:
+    """
+    BVS - Branch if Overflow Set.
+    :return: None
+    """
+    if self["flag_v"]:
+        self, t1 = P_fetch_byte(self)
+        self["program_counter"] += t1
+        self["cycles"] += 1
 
 def P_ins_clc_imp(self: dict) -> None:
     """
@@ -452,7 +722,233 @@ def P_ins_clv_imp(self: dict) -> None:
     self["cycles"] += 1
     return self, None
 
-#cmp, cpx, cpy
+def P_ins_cmp_imm(self: dict) -> None:
+    """
+    CMP - Compare, Immediate.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, _ = P_evaluate_flag_n(self, t1 - t2)
+
+    self, t3 = P_read_register_a(self)
+    self, t4 = P_fetch_byte(self)
+    self, _ = P_evaluate_flag_z(self, t3 - t4)
+    self["cycles"] += 1
+
+def P_ins_cmp_zp(self: dict) -> None:
+    """
+    CMP - Compare, Zero Page.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_byte(self, t2)
+    self, _ = P_evaluate_flag_n(self, t1 - t3)
+
+    self, t4 = P_read_register_a(self)
+    self, t5 = P_fetch_byte(self)
+    self, t6 = P_read_byte(self, t5)
+    self, _ = P_evaluate_flag_z(self, t4 - t6)
+    self["cycles"] += 1
+
+def P_ins_cmp_zpx(self: dict) -> None:
+    """
+    CMP - Compare, Zero Page, X.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_register_x(self)
+    self, t4 = P_read_byte(self, (t2 + t3) & 0xFF)
+    self, _ = P_evaluate_flag_n(self, t1 - t4)
+
+    self, t5 = P_read_register_a(self)
+    self, t6 = P_fetch_byte(self)
+    self, t7 = P_read_register_x(self)
+    self, t8 = P_read_byte(self, (t6 + t7) & 0xFF)
+    self, _ = P_evaluate_flag_z(self, t5 - t8)
+    self["cycles"] += 1
+
+def P_ins_cmp_abs(self: dict) -> None:
+    """
+    CMP - Compare, Absolute.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_byte(self, t2)
+    self, _ = P_evaluate_flag_n(self, t1 - t3)
+    
+    self, t4 = P_read_register_a(self)
+    self, t5 = P_fetch_word(self)
+    self, t6 = P_read_byte(self, t5)
+    self, _ = P_evaluate_flag_z(self, t4 - t6)
+    self["cycles"] += 1
+
+def P_ins_cmp_abx(self: dict) -> None:
+    """
+    CMP - Compare, Absolute, X.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_register_x(self)
+    self, t4 = P_read_byte(self, t2 + t3)
+    self, _ = P_evaluate_flag_n(self, t1 - t4)
+
+    self, t5 = P_read_register_a(self)
+    self, t6 = P_fetch_word(self)
+    self, t7 = P_read_register_x(self)
+    self, t8 = P_read_byte(self, t6 + t7)
+    self, _ = P_evaluate_flag_z(self, t5 - t8)
+    self["cycles"] += 1
+
+def P_ins_cmp_aby(self: dict) -> None:
+    """
+    CMP - Compare, Absolute, Y.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_register_y(self)
+    self, t4 = P_read_byte(self, t2 + t3)
+    self, _ = P_evaluate_flag_n(self, t1 - t4)
+    
+    self, t5 = P_read_register_a(self)
+    self, t6 = P_fetch_word(self)
+    self, t7 = P_read_register_y(self)
+    self, t8 = P_read_byte(self, t6 + t7)
+    self, _ = P_evaluate_flag_z(self, t5 - t8)
+    self["cycles"] += 1
+
+def P_ins_cmp_inx(self: dict) -> None:
+    """
+    CMP - Compare, Indexed Indirect.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_register_x(self)
+    self, t4 = P_read_byte(self, t2 + t3)
+    self, _ = P_evaluate_flag_n(self, t1 - t4)
+
+    self, t5 = P_read_register_a(self)
+    self, t6 = P_fetch_byte(self)
+    self, t7 = P_read_register_x(self)
+    self, t8 = P_read_byte(self, t6 + t7)
+    self, _ = P_evaluate_flag_z(self, t5 - t8)
+    self["cycles"] += 1
+
+def P_ins_cmp_iny(self: dict) -> None:
+    """
+    CMP - Compare, Indirect Indexed.
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_byte(self, t2)
+    self, t4 = P_read_register_y(self)
+    self, _ = P_evaluate_flag_n(self, t1 - t3 + t4)
+    
+    self, t5 = P_read_register_a(self)
+    self, t6 = P_fetch_byte(self)
+    self, t7 = P_read_byte(self, t6)
+    self, t8 = P_read_register_y(self)
+    self, _ = P_evaluate_flag_z(self, t5 - t7 + t8)
+    self["cycles"] += 1
+
+def P_ins_cpx_imm(self: dict) -> None:
+    """
+    CPX - Compare X Register, Immediate.
+    :return: None
+    """
+    self, t1 = P_read_register_x(self)
+    self, t2 = P_fetch_byte(self)
+    self, _ = P_evaluate_flag_n(self, t1 - t2)
+    
+    self, t3 = P_read_register_x(self)
+    self, t4 = P_fetch_byte(self)
+    self, _ = P_evaluate_flag_z(self, t3 - t4)
+    self["cycles"] += 1
+
+def P_ins_cpx_zp(self: dict) -> None:
+    """
+    CPX - Compare X Register, Zero Page.
+    :return: None
+    """
+    self, t1 = P_read_register_x(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_byte(self, t2)
+    self, _ = P_evaluate_flag_n(self, t1 - t3)
+    
+    self, t4 = P_read_register_x(self)
+    self, t5 = P_fetch_byte(self)
+    self, t6 = P_read_byte(self, t5)
+    self, _ = P_evaluate_flag_z(self, t4 - t6)
+    self["cycles"] += 1
+
+def P_ins_cpx_abs(self: dict) -> None:
+    """
+    CPX - Compare X Register, Absolute.
+    :return: None
+    """
+    self, t1 = P_read_register_x(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_byte(self, t2)
+    self, _ = P_evaluate_flag_n(self, t1 - t3)
+    
+    self, t4 = P_read_register_x(self)
+    self, t5 = P_fetch_word(self)
+    self, t6 = P_read_byte(self, t5)
+    self, _ = P_evaluate_flag_z(self, t4 - t6)
+    self["cycles"] += 1
+
+def P_ins_cpy_imm(self: dict) -> None:
+    """
+    CPY - Compare Y Register, Immediate.
+    :return: None
+    """
+    self, t1 = P_read_register_y(self)
+    self, t2 = P_fetch_byte(self)
+    self, _ = P_evaluate_flag_n(self, t1 - t2)
+    
+    self, t3 = P_read_register_y(self)
+    self, t4 = P_fetch_byte(self)
+    self, _ = P_evaluate_flag_z(self, t3 - t4)
+    self["cycles"] += 1
+
+def P_ins_cpy_zp(self: dict) -> None:
+    """
+    CPY - Compare Y Register, Zero Page.
+    :return: None
+    """
+    self, t1 = P_read_register_y(self)
+    self, t2 = P_fetch_byte(self)
+    self, t3 = P_read_byte(self, t2)
+    self, _ = P_evaluate_flag_n(self, t1 - t3)
+    
+    self, t4 = P_read_register_y(self)
+    self, t5 = P_fetch_byte(self)
+    self, t6 = P_read_byte(self, t5)
+    self, _ = P_evaluate_flag_z(self, t4 - t6)
+    self["cycles"] += 1
+
+def P_ins_cpy_abs(self: dict) -> None:
+    """
+    CPY - Compare Y Register, Absolute.
+    :return: None
+    """
+    self, t1 = P_read_register_y(self)
+    self, t2 = P_fetch_word(self)
+    self, t3 = P_read_byte(self, t2)
+    self, _ = P_evaluate_flag_n(self, t1 - t3)
+    
+    self, t4 = P_read_register_y(self)
+    self, t5 = P_fetch_word(self)
+    self, t6 = P_read_byte(self, t5)
+    self, _ = P_evaluate_flag_z(self, t4 - t6)
+    self["cycles"] += 1
 
 def P_ins_dec_zp(self: dict) -> None:
     """
@@ -539,7 +1035,7 @@ def P_ins_dey_imp(self: dict) -> None:
     self, _ = P_evaluate_flag_n(self, self["reg_y"])
     return self, None
 
-#for
+#EOR
 
 def P_ins_inc_zp(self: dict) -> None:
     """
@@ -625,7 +1121,9 @@ def P_ins_iny_imp(self: dict) -> None:
     self, _ = P_evaluate_flag_n(self, self["reg_y"])
     return self, None
 
-#jmp, jsr
+#JMP
+
+#JSR
 
 def P_ins_lda_imm(self: dict) -> None:
     """
@@ -854,7 +1352,99 @@ def P_ins_ldy_abx(self: dict) -> None:
     self, _ = P_evaluate_flag_n(self, self["reg_y"])
     return self, None
 
-#lsr
+#LSR
+
+#ORA
+
+def P_ins_pha_imp(self: dict) -> None:
+    """
+    PHA - Push Accumulator.
+
+    TODO: Add check to not cross page
+
+    :return: None
+    """
+    self, t1 = P_read_register_a(self)
+    self["memory"] = M___setitem__(self["memory"], self["stack_pointer"], t1)
+    self["stack_pointer"] -= 1
+    self["cycles"] += 1
+    return self, None
+
+def P_ins_pla_imp(self: dict) -> None:
+    """
+    PLA - Pull Accumulator.
+
+    TODO: Add check to not cross page
+
+    :return: None
+    """
+    self["reg_a"] = M___getitem__(self["memory"], self["stack_pointer"])
+    self["stack_pointer"] += 1
+    self["cycles"] += 1
+    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_flag_n(self, self["reg_a"])
+    return self, None
+
+def P_ins_php_imp(self: dict) -> None:
+    """
+    Push Processor Statys, Implied.
+
+    return: None
+    """
+    flags = 0x00
+    if self["flag_n"]:
+        flags = flags | (1 << 1)
+    if self["flag_v"]:
+        flags = flags | (1 << 2)
+    if self["flag_b"]:
+        flags = flags | (1 << 3)
+    if self["flag_d"]:
+        flags = flags | (1 << 4)
+    if self["flag_i"]:
+        flags = flags | (1 << 5)
+    if self["flag_z"]:
+        flags = flags | (1 << 6)
+    if self["flag_c"]:
+        flags = flags | (1 << 7)
+    self, _ = P_push(self, flags)
+    self["cycles"] += 1
+    return self, None
+
+def P_ins_plp_imp(self: dict) -> None:
+    """
+    Pull Processor Status.
+
+    TODO: Implement instruction and test
+    TODO: Add check to not cross page
+
+    :return: None
+    """
+    self, flags = P_pop(self)
+    # print(flags)
+    if not flags & (1 << 1):
+        self["flag_n"] = False
+    if not flags & (1 << 2):
+        self["flag_v"] = False
+    if not flags & (1 << 3):
+        self["flag_b"] = False
+    if not flags & (1 << 4):
+        self["flag_d"] = False
+    if not flags & (1 << 5):
+        self["flag_i"] = False
+    if not flags & (1 << 6):
+        self["flag_z"] = False
+    if not flags & (1 << 7):
+        self["flag_c"] = False
+    self["cycles"] += 2
+    return self, None
+
+#ROR
+
+#RTI
+
+#RTS
+
+#SBC
 
 def P_ins_sec_imp(self: dict) -> None:
     """
@@ -1092,91 +1682,6 @@ def P_ins_tya_imp(self: dict) -> None:
     self, _ = P_evaluate_flag_z(self, self["reg_a"])
     self, _ = P_evaluate_flag_n(self, self["reg_a"])
     return self, None
-
-def P_ins_pha_imp(self: dict) -> None:
-    """
-    PHA - Push Accumulator.
-
-    TODO: Add check to not cross page
-
-    :return: None
-    """
-    self, t1 = P_read_register_a(self)
-    self["memory"] = M___setitem__(self["memory"], self["stack_pointer"], t1)
-    self["stack_pointer"] -= 1
-    self["cycles"] += 1
-    return self, None
-
-def P_ins_pla_imp(self: dict) -> None:
-    """
-    PLA - Pull Accumulator.
-
-    TODO: Add check to not cross page
-
-    :return: None
-    """
-    self["reg_a"] = M___getitem__(self["memory"], self["stack_pointer"])
-    self["stack_pointer"] += 1
-    self["cycles"] += 1
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    return self, None
-
-def P_ins_php_imp(self: dict) -> None:
-    """
-    Push Processor Statys, Implied.
-
-    return: None
-    """
-    flags = 0x00
-    if self["flag_n"]:
-        flags = flags | (1 << 1)
-    if self["flag_v"]:
-        flags = flags | (1 << 2)
-    if self["flag_b"]:
-        flags = flags | (1 << 3)
-    if self["flag_d"]:
-        flags = flags | (1 << 4)
-    if self["flag_i"]:
-        flags = flags | (1 << 5)
-    if self["flag_z"]:
-        flags = flags | (1 << 6)
-    if self["flag_c"]:
-        flags = flags | (1 << 7)
-    self, _ = P_push(self, flags)
-    self["cycles"] += 1
-    return self, None
-
-def P_ins_plp_imp(self: dict) -> None:
-    """
-    Pull Processor Status.
-
-    TODO: Implement instruction and test
-    TODO: Add check to not cross page
-
-    :return: None
-    """
-    self, flags = P_pop(self)
-    # print(flags)
-    if not flags & (1 << 1):
-        self["flag_n"] = False
-    if not flags & (1 << 2):
-        self["flag_v"] = False
-    if not flags & (1 << 3):
-        self["flag_b"] = False
-    if not flags & (1 << 4):
-        self["flag_d"] = False
-    if not flags & (1 << 5):
-        self["flag_i"] = False
-    if not flags & (1 << 6):
-        self["flag_z"] = False
-    if not flags & (1 << 7):
-        self["flag_c"] = False
-    self["cycles"] += 2
-    return self, None
-
-
-
 
 
 
