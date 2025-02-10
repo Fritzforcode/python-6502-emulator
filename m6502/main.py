@@ -248,6 +248,12 @@ def P_evaluate_flag_z(self: dict, data: int) -> None:
         self["flag_z"] = False
     return self, None
 
+def P_evaluate_nz_a(self: dict) -> None:
+    """
+    Evaluate the Zero and Negative Flags for the Accumulator
+    :return: None
+    """
+
 def P_execute(self: dict, cycles: int = 0) -> None:
     """
     Execute code for X amount of cycles. Or until a breakpoint is reached.
@@ -285,8 +291,7 @@ def P_ins_adc_imm(self: dict) -> None:
     self, t1 = P_read_register_a(self)
     self, t2 = P_fetch_byte(self)
     self["reg_a"] = t1 + t2
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_adc_zp(self: dict) -> None:
@@ -298,8 +303,7 @@ def P_ins_adc_zp(self: dict) -> None:
     self, t2 = P_fetch_byte(self)
     self, t3 = P_read_byte(self, t2)
     self["reg_a"] = t1 + t3
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_adc_zpx(self: dict) -> None:
@@ -312,8 +316,7 @@ def P_ins_adc_zpx(self: dict) -> None:
     self, t3 = P_read_register_x(self)
     self, t4 = P_read_byte(self, (t2 + t3) & 0xFF)
     self["reg_a"] = t1 + t4
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_adc_abs(self: dict) -> None:
@@ -325,8 +328,7 @@ def P_ins_adc_abs(self: dict) -> None:
     self, t2 = P_fetch_word(self)
     self, t3 = P_read_byte(self, t2)
     self["reg_a"] = t1 + t3
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_adc_abx(self: dict) -> None:
@@ -339,8 +341,7 @@ def P_ins_adc_abx(self: dict) -> None:
     self, t3 = P_read_register_x(self)
     self, t4 = P_read_byte(self, t2 + t3)
     self["reg_a"] = t1 + t4
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_adc_aby(self: dict) -> None:
@@ -353,8 +354,7 @@ def P_ins_adc_aby(self: dict) -> None:
     self, t3 = P_read_register_y(self)
     self, t4 = P_read_byte(self, t2 + t3)
     self["reg_a"] = t1 + t4
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_adc_inx(self: dict) -> None:
@@ -367,8 +367,7 @@ def P_ins_adc_inx(self: dict) -> None:
     self, t3 = P_read_register_x(self)
     self, t4 = P_read_byte(self, t2 + t3)
     self["reg_a"] = t1 + t4
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_adc_iny(self: dict) -> None:
@@ -381,8 +380,7 @@ def P_ins_adc_iny(self: dict) -> None:
     self, t3 = P_read_byte(self, t2)
     self, t4 = P_read_register_y(self)
     self["reg_a"] = t1 + t3 + t4
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_and_imm(self: dict) -> None:
@@ -393,8 +391,7 @@ def P_ins_and_imm(self: dict) -> None:
     self, t1 = P_read_register_a(self)
     self, t2 = P_fetch_byte(self)
     self["reg_a"] = t1 & t2
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_and_zp(self: dict) -> None:
@@ -406,8 +403,7 @@ def P_ins_and_zp(self: dict) -> None:
     self, t2 = P_fetch_byte(self)
     self, t3 = P_read_byte(self, t2)
     self["reg_a"] = t1 & t3
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_and_zpx(self: dict) -> None:
@@ -420,8 +416,7 @@ def P_ins_and_zpx(self: dict) -> None:
     self, t3 = P_read_register_x(self)
     self, t4 = P_read_byte(self, (t2 + t3) & 0xFF)
     self["reg_a"] = t1 & t4
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_and_abs(self: dict) -> None:
@@ -433,8 +428,7 @@ def P_ins_and_abs(self: dict) -> None:
     self, t2 = P_fetch_word(self)
     self, t3 = P_read_byte(self, t2)
     self["reg_a"] = t1 & t3
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_and_abx(self: dict) -> None:
@@ -447,8 +441,7 @@ def P_ins_and_abx(self: dict) -> None:
     self, t3 = P_read_register_x(self)
     self, t4 = P_read_byte(self, t2 + t3)
     self["reg_a"] = t1 & t4
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_and_aby(self: dict) -> None:
@@ -461,8 +454,7 @@ def P_ins_and_aby(self: dict) -> None:
     self, t3 = P_read_register_y(self)
     self, t4 = P_read_byte(self, t2 + t3)
     self["reg_a"] = t1 & t4
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_and_inx(self: dict) -> None:
@@ -475,8 +467,7 @@ def P_ins_and_inx(self: dict) -> None:
     self, t3 = P_read_register_x(self)
     self, t4 = P_read_byte(self, t2 + t3)
     self["reg_a"] = t1 & t4
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_and_iny(self: dict) -> None:
@@ -489,8 +480,7 @@ def P_ins_and_iny(self: dict) -> None:
     self, t3 = P_read_byte(self, t2)
     self, t4 = P_read_register_y(self)
     self["reg_a"] = t1 & t3 + t4
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_asl_acc(self: dict) -> None:
@@ -500,8 +490,7 @@ def P_ins_asl_acc(self: dict) -> None:
     """
     self, t1 = P_read_register_a(self)
     self["reg_a"] = t1 << 1
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_asl_zp(self: dict) -> None:
@@ -512,8 +501,7 @@ def P_ins_asl_zp(self: dict) -> None:
     address = P_fetch_byte(self)
     self, t1 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t1 << 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_asl_zpx(self: dict) -> None:
@@ -526,8 +514,7 @@ def P_ins_asl_zpx(self: dict) -> None:
     address = (t1 + t2) & 0xFF
     self, t3 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t3 << 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_asl_abs(self: dict) -> None:
@@ -538,8 +525,7 @@ def P_ins_asl_abs(self: dict) -> None:
     address = P_fetch_word(self)
     self, t1 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t1 << 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_asl_abx(self: dict) -> None:
@@ -552,8 +538,7 @@ def P_ins_asl_abx(self: dict) -> None:
     address = t1 + t2
     self, t3 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t3 << 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
 
 def P_ins_bcc_rel(self: dict) -> None:
@@ -595,8 +580,7 @@ def P_ins_bit_zp(self: dict) -> None:
     self, t2 = P_fetch_byte(self)
     self, t3 = P_read_byte(self, t2)
     self["reg_a"] = t1 & t3
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self, t4 = P_fetch_byte(self)
     self, t5 = P_read_byte(self, t4)
     self["flag_v"] = (t5 & 0x40) != 0
@@ -611,8 +595,7 @@ def P_ins_bit_abs(self: dict) -> None:
     self, t2 = P_fetch_word(self)
     self, t3 = P_read_byte(self, t2)
     self["reg_a"] = t1 & t3
-    self, _ = P_evaluate_flag_n(self, self["reg_a"])
-    self, _ = P_evaluate_flag_z(self, self["reg_a"])
+    self, _ = P_evaluate_nz_a(self)
     self, t4 = P_fetch_word(self)
     self, t5 = P_read_byte(self, t4)
     self["flag_v"] = (t5 & 0x40) != 0
@@ -779,7 +762,7 @@ def P_ins_cmp_abs(self: dict) -> None:
     self, t2 = P_fetch_word(self)
     self, t3 = P_read_byte(self, t2)
     self, _ = P_evaluate_flag_n(self, t1 - t3)
-    
+
     self, t4 = P_read_register_a(self)
     self, t5 = P_fetch_word(self)
     self, t6 = P_read_byte(self, t5)
@@ -814,7 +797,7 @@ def P_ins_cmp_aby(self: dict) -> None:
     self, t3 = P_read_register_y(self)
     self, t4 = P_read_byte(self, t2 + t3)
     self, _ = P_evaluate_flag_n(self, t1 - t4)
-    
+
     self, t5 = P_read_register_a(self)
     self, t6 = P_fetch_word(self)
     self, t7 = P_read_register_y(self)
@@ -850,7 +833,7 @@ def P_ins_cmp_iny(self: dict) -> None:
     self, t3 = P_read_byte(self, t2)
     self, t4 = P_read_register_y(self)
     self, _ = P_evaluate_flag_n(self, t1 - t3 + t4)
-    
+
     self, t5 = P_read_register_a(self)
     self, t6 = P_fetch_byte(self)
     self, t7 = P_read_byte(self, t6)
@@ -866,7 +849,7 @@ def P_ins_cpx_imm(self: dict) -> None:
     self, t1 = P_read_register_x(self)
     self, t2 = P_fetch_byte(self)
     self, _ = P_evaluate_flag_n(self, t1 - t2)
-    
+
     self, t3 = P_read_register_x(self)
     self, t4 = P_fetch_byte(self)
     self, _ = P_evaluate_flag_z(self, t3 - t4)
@@ -881,7 +864,7 @@ def P_ins_cpx_zp(self: dict) -> None:
     self, t2 = P_fetch_byte(self)
     self, t3 = P_read_byte(self, t2)
     self, _ = P_evaluate_flag_n(self, t1 - t3)
-    
+
     self, t4 = P_read_register_x(self)
     self, t5 = P_fetch_byte(self)
     self, t6 = P_read_byte(self, t5)
@@ -897,7 +880,7 @@ def P_ins_cpx_abs(self: dict) -> None:
     self, t2 = P_fetch_word(self)
     self, t3 = P_read_byte(self, t2)
     self, _ = P_evaluate_flag_n(self, t1 - t3)
-    
+
     self, t4 = P_read_register_x(self)
     self, t5 = P_fetch_word(self)
     self, t6 = P_read_byte(self, t5)
@@ -912,7 +895,7 @@ def P_ins_cpy_imm(self: dict) -> None:
     self, t1 = P_read_register_y(self)
     self, t2 = P_fetch_byte(self)
     self, _ = P_evaluate_flag_n(self, t1 - t2)
-    
+
     self, t3 = P_read_register_y(self)
     self, t4 = P_fetch_byte(self)
     self, _ = P_evaluate_flag_z(self, t3 - t4)
@@ -927,7 +910,7 @@ def P_ins_cpy_zp(self: dict) -> None:
     self, t2 = P_fetch_byte(self)
     self, t3 = P_read_byte(self, t2)
     self, _ = P_evaluate_flag_n(self, t1 - t3)
-    
+
     self, t4 = P_read_register_y(self)
     self, t5 = P_fetch_byte(self)
     self, t6 = P_read_byte(self, t5)
@@ -943,7 +926,7 @@ def P_ins_cpy_abs(self: dict) -> None:
     self, t2 = P_fetch_word(self)
     self, t3 = P_read_byte(self, t2)
     self, _ = P_evaluate_flag_n(self, t1 - t3)
-    
+
     self, t4 = P_read_register_y(self)
     self, t5 = P_fetch_word(self)
     self, t6 = P_read_byte(self, t5)
@@ -960,8 +943,7 @@ def P_ins_dec_zp(self: dict) -> None:
     self, t1 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t1 - 1)
 
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
     return self, None
 
@@ -976,8 +958,7 @@ def P_ins_dec_zpx(self: dict) -> None:
     address = (t1 + t2) & 0xFF
     self, t3 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t3 - 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
     return self, None
 
@@ -990,8 +971,7 @@ def P_ins_dec_abs(self: dict) -> None:
     self, address = P_fetch_word(self)
     self, t1 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t1 - 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
     return self, None
 
@@ -1006,8 +986,7 @@ def P_ins_dec_abx(self: dict) -> None:
     address = t1 + t2
     self, t3 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t3 - 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
     return self, None
 
@@ -1046,8 +1025,7 @@ def P_ins_inc_zp(self: dict) -> None:
     self, address = P_fetch_byte(self)
     self, t1 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t1 + 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
     return self, None
 
@@ -1062,8 +1040,7 @@ def P_ins_inc_zpx(self: dict) -> None:
     address = (t1 + t2) & 0xFF
     self, t3 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t3 + 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
     return self, None
 
@@ -1076,8 +1053,7 @@ def P_ins_inc_abs(self: dict) -> None:
     self, address = P_fetch_word(self)
     self, t1 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t1 + 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
     return self, None
 
@@ -1092,8 +1068,7 @@ def P_ins_inc_abx(self: dict) -> None:
     address = t1 + t2
     self, t3 = P_read_byte(self, address)
     self, _ = P_write_byte(self, address, t3 + 1)
-    self, _ = P_evaluate_flag_n(self, M___getitem__(self["memory"], address))
-    self, _ = P_evaluate_flag_z(self, M___getitem__(self["memory"], address))
+    self, _ = P_evaluate_nz_a(self)
     self["cycles"] += 1
     return self, None
 
