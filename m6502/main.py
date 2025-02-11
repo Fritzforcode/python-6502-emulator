@@ -610,7 +610,7 @@ def P_ins_beq_rel(self: dict) -> None:
         self["program_counter"] += t1
         self["cycles"] += 1
 
-def P_ins_bit_zp(self: dict) -> None:
+def P_ins_bit_zp(self: dict) -> None: # WARINING: MESSED UP!
     """
     BIT - Bit Test, Zero Page.
     :return: None
@@ -625,7 +625,7 @@ def P_ins_bit_zp(self: dict) -> None:
     self["flag_v"] = (t5 & 0x40) != 0
     self["cycles"] += 1
 
-def P_ins_bit_abs(self: dict) -> None:
+def P_ins_bit_abs(self: dict) -> None: # WARINING: MESSED UP!
     """
     BIT - Bit Test, Absolute.
     :return: None
@@ -1234,6 +1234,7 @@ def P_ins_lda_abx(self: dict) -> None:
     self, t1 = P_fetch_word(self)
     self, self["reg_a"] = P_read_byte(self, t1 + self["reg_x"])
     self, _ = P_evaluate_flags_nz_a(self)
+    self["cycles"] -= 1 # CYCLES
     return self, None
 
 def P_ins_lda_aby(self: dict) -> None:
@@ -1247,6 +1248,7 @@ def P_ins_lda_aby(self: dict) -> None:
     self, t1 = P_fetch_word(self)
     self, self["reg_a"] = P_read_byte(self, t1 + self["reg_y"])
     self, _ = P_evaluate_flags_nz_a(self)
+    self["cycles"] -= 1 # CYCLES
     return self, None
 
 def P_ins_lda_inx(self: dict) -> None:
@@ -1260,6 +1262,7 @@ def P_ins_lda_inx(self: dict) -> None:
     self, self["reg_a"] = P_read_byte(self, t2)
     self, _ = P_evaluate_flags_nz_a(self)
     self["cycles"] += 1
+    self["cycles"] -= 1 # CYCLES
     return self, None
 
 def P_ins_lda_iny(self: dict) -> None:
@@ -1330,6 +1333,7 @@ def P_ins_ldx_aby(self: dict) -> None:
     self, t1 = P_fetch_word(self)
     self, self["reg_x"] = P_read_byte(self, t1 + self["reg_y"])
     self, _ = P_evaluate_flags_nz_x(self)
+    self["cycles"] -= 1 # CYCLES
     return self, None
 
 
@@ -1388,6 +1392,7 @@ def P_ins_ldy_abx(self: dict) -> None:
     self, t1 = P_fetch_word(self)
     self, self["reg_y"] = P_read_byte(self, t1 + self["reg_x"])
     self, _ = P_evaluate_flags_nz_y(self)
+    self["cycles"] -= 1 # CYCLES
     return self, None
 
 #LSR
@@ -1662,6 +1667,7 @@ def P_ins_sta_abx(self: dict) -> None:
     self, t1 = P_fetch_word(self)
     self, t2 = P_read_byte(self, t1 + self["reg_x"])
     self, _ = P_write_byte(self, t2, self["reg_a"])
+    self["cycles"] -= 1 # CYCLES
     return self, None
 
 def P_ins_sta_aby(self: dict) -> None:
@@ -1675,6 +1681,7 @@ def P_ins_sta_aby(self: dict) -> None:
     self, t1 = P_fetch_word(self)
     self, t2 = P_read_byte(self, t1 + self["reg_y"])
     self, _ = P_write_byte(self, t2, self["reg_a"])
+    self["cycles"] -= 1 # CYCLES
     return self, None
 
 def P_ins_sta_inx(self: dict) -> None:
@@ -1687,6 +1694,7 @@ def P_ins_sta_inx(self: dict) -> None:
     self, t2 = P_read_word(self, (t1 + self["reg_x"]) & 0xFF)
     self, t3 = P_read_byte(self, t2)
     self, _ = P_write_byte(self, t3, self["reg_a"])
+    self["cycles"] -= 1 # CYCLES
     return self, None
 
 def P_ins_sta_iny(self: dict) -> None:

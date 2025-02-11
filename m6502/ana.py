@@ -1,0 +1,25 @@
+text = open("main.py").read()
+lines = text.splitlines()
+
+import ast
+tree = ast.parse(text)
+del tree.body[0]
+del tree.body[0]
+del tree.body[0]
+#print(ast.dump(tree, indent=4)[:50000])
+
+new = []
+code = ""
+for node in tree.body:
+    if isinstance(node, ast.FunctionDef):
+        if node.name.endswith("_iny"):
+            new.append(node)
+            #print(node.name, 100*"=")
+            #print(node.lineno, node.end_lineno)
+            seg ="\n".join(lines[node.lineno-1:node.end_lineno+1])
+            code += seg
+            #print(seg)
+
+new_module = ast.Module(new)
+#print(ast.dump(new_module, indent=4))
+print(code)
