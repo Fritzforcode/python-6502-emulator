@@ -207,18 +207,27 @@ def P_read_register_y(self: dict) -> int:
     self["cycles"] += 1
     return self, self["reg_y"]
 
-def P_push(self: dict, data: int) -> None:
+def P_push_byte(self: dict, data: int) -> None:
     """
-    Push data to stack.
+    Push a byte to stack.
 
     :return: None
     """
-    self["memory"][self["stack_pointer"]] = data
+    self["memory"] = M___setitem__(self["memory"], self["stack_pointer"], data)
     self["stack_pointer"] -= 1
     self["cycles"] += 1
     return self, None
 
-def P_pop(self: dict) -> int:
+def P_push_word(self: dict, data: int) -> None:
+    if BYTEORDER == "little":
+        self, _ = P_push_byte(self,  data       & 0xFF)
+        self, _ = P_push_byte(self, (data >> 8) & 0xFF)
+    else:
+        self, _ = P_push_byte(self, (data >> 8) & 0xFF)
+        self, _ = P_push_byte(self,  data       & 0xFF)
+    return self, None
+
+def P_pop_byte(self: dict) -> int:
     """
     Pop data from stack.
 
@@ -226,7 +235,19 @@ def P_pop(self: dict) -> int:
     """
     self["stack_pointer"] += 1
     self["cycles"] += 1
-    return self, self["memory"][self["stack_pointer"] - 1]
+    data = M___getitem__(self["memory"], self["stack_pointer"])
+    return self, data
+
+def P_pop_word(self: dict) -> None:
+    if BYTEORDER == "little":
+        self, t1 = P_pop_byte(self)
+        self, t2 = P_pop_byte(self)
+        data = (t1 << 8) | t2
+    else:
+        self, t1 = P_pop_byte(self)
+        self, t2 = P_pop_byte(self)
+        data = t1 | (t2 << 8)
+    return self, data
 
 def P_evaluate_flag_c(self: dict, data: int, bcd: bool = False) -> None:
     """
@@ -581,6 +602,34 @@ def P_ins_bpl(self: dict, operand: int, *args) -> None:
         self["program_counter"] += operand
         self["cycles"] += 1
     return self, None
+
+def P_ins_brk(self: dict) -> None:
+    """
+    BRK - Force Interrupt.
+    :return: None
+    """
+    # Increment PC (BRK uses an implied operand, so PC should skip the next byte)
+    self["pc"] += 1
+
+    # Push the Program Counter onto the stack (high byte first)
+    pc = self["pc"]
+    self, _ = P_push_stack(self, (pc >> 8) & 0xFF)  # High byte
+    self, _ = P_push_stack(self, pc & 0xFF)         # Low byte
+
+    # Push the Status Register onto the stack with Break flag set (B = 1)
+    self["status"] |= 0b00010000  # Set Break flag
+    self, _ = P_push_stack(self, self["status"])
+
+    # Fetch the IRQ/BRK vector at 0xFFFE-0xFFFF
+    self, low = P_read_byte(self, 0xFFFE)
+    self, high = P_read_byte(self, 0xFFFF)
+    self["pc"] = (high << 8) | low  # Set PC to the interrupt handler address
+
+    # Set Interrupt Disable flag (I = 1)
+    self["status"] |= 0b00000100
+
+    # BRK takes 7 cycles
+    self["cycles"] += 7
 
 ############################################################################################################
 #                                     Emulation of the MOT-6502 memory.                                    #
