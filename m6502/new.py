@@ -1,65 +1,6 @@
 """Emulation of the MOT-6502 Processor."""
 
-INSTRUCTIONS_INFO = {
-    "ADC": {"cycles": 6, "penalties": "other_page_1"},
-    "AND": {"cycles": 6, "penalties": "other_page_1"},
-    "ASL": {"cycles": 5, "penalties": ""},
-    "BCC": {"cycles": 2, "penalties": "same_page_1 other_page_2"},
-    "BCS": {"cycles": 2, "penalties": "same_page_1 other_page_2"},
-    "BEQ": {"cycles": 2, "penalties": "same_page_1 other_page_2"},
-    "BIT": {"cycles": 3, "penalties": ""},
-    "BMI": {"cycles": 2, "penalties": "same_page_1 other_page_2"},
-    "BNE": {"cycles": 2, "penalties": "same_page_1 other_page_2"},
-    "BPL": {"cycles": 2, "penalties": "same_page_1 other_page_2"},
-    "BRK": {"cycles": 7, "penalties": ""},
-    "BVC": {"cycles": 2, "penalties": "same_page_1 other_page_2"},
-    "BVS": {"cycles": 2, "penalties": "same_page_1 other_page_2"},
-    "CLC": {"cycles": 2, "penalties": ""},
-    "CLD": {"cycles": 2, "penalties": ""},
-    "CLI": {"cycles": 2, "penalties": ""},
-    "CLV": {"cycles": 2, "penalties": ""},
-    "CMP": {"cycles": 6, "penalties": "other_page_1"},
-    "CPX": {"cycles": 6, "penalties": ""},
-    "CPY": {"cycles": 6, "penalties": ""},
-    "DEC": {"cycles": 5, "penalties": ""},
-    "DEX": {"cycles": 2, "penalties": ""},
-    "DEY": {"cycles": 2, "penalties": ""},
-    "EOR": {"cycles": 6, "penalties": "other_page_1"},
-    "INC": {"cycles": 5, "penalties": ""},
-    "INX": {"cycles": 2, "penalties": ""},
-    "INY": {"cycles": 2, "penalties": ""},
-    "JMP": {"cycles": 3, "penalties": ""},
-    "JSR": {"cycles": 6, "penalties": ""},
-    "LDA": {"cycles": 6, "penalties": "other_page_1"},
-    "LDX": {"cycles": 6, "penalties": "other_page_1"},
-    "LDY": {"cycles": 6, "penalties": "other_page_1"},
-    "LSR": {"cycles": 5, "penalties": ""},
-    "NOP": {"cycles": 2, "penalties": ""},
-    "ORA": {"cycles": 6, "penalties": "other_page_1"},
-    "PHA": {"cycles": 3, "penalties": ""},
-    "PHP": {"cycles": 3, "penalties": ""},
-    "PLA": {"cycles": 4, "penalties": ""},
-    "PLP": {"cycles": 4, "penalties": ""},
-    "ROL": {"cycles": 5, "penalties": ""},
-    "ROR": {"cycles": 5, "penalties": ""},
-    "RTI": {"cycles": 6, "penalties": ""},
-    "RTS": {"cycles": 6, "penalties": ""},
-    "SBC": {"cycles": 6, "penalties": "other_page_1"},
-    "SEC": {"cycles": 2, "penalties": ""},
-    "SED": {"cycles": 2, "penalties": ""},
-    "SEI": {"cycles": 2, "penalties": ""},
-    "STA": {"cycles": 5, "penalties": "other_page_1"},
-    "STX": {"cycles": 5, "penalties": ""},
-    "STY": {"cycles": 5, "penalties": ""},
-    "TAX": {"cycles": 2, "penalties": ""},
-    "TAY": {"cycles": 2, "penalties": ""},
-    "TSX": {"cycles": 2, "penalties": ""},
-    "TXA": {"cycles": 2, "penalties": ""},
-    "TXS": {"cycles": 2, "penalties": ""},
-    "TYA": {"cycles": 2, "penalties": ""},
-}
-
-help_addRESSING = [
+ADDRESSING = [
     #  0  |  1   |  2   |  3   |  4   |  5   |  6   |  7   |  8   |  9   |  A   |  B   |  C   |  D   |  E   |  F   |
     "imp", "inx", "imp", "inx", "zp",  "zp",  "zp",  "zp",  "imp", "imm", "acc", "imm", "abs", "abs", "abs", "abs",  # 0
     "rel", "iny", "imp", "iny", "zpx", "zpx", "zpx", "zpx", "imp", "aby", "imp", "aby", "abx", "abx", "abx", "abx",  # 1
@@ -78,23 +19,6 @@ help_addRESSING = [
     "imm", "inx", "imm", "inx", "zp",  "zp",  "zp",  "zp",  "imp", "imm", "imp", "imm", "abs", "abs", "abs", "abs",  # E
     "rel", "iny", "imp", "iny", "zpx", "zpx", "zpx", "zpx", "imp", "aby", "imp", "aby", "abx", "abx", "abx", "abx",  # F
 ]
-
-["imp", "inx", "zp", "imm", "acc", "abs", "rel", "iny", "zpx", "aby", "abx", "ind", "zpy"]
-
-"imp"
-"acc"
-"rel"
-"ind"
-"zpy"
-
-"imm"
-"zp"
-"zpx"
-"abs"
-"abx"
-"aby"
-"inx"
-"iny"
 
 OPCODES = [
     #  0  |  1   |  2   |  3   |  4   |  5   |  6   |  7   |  8   |  9   |  A   |  B   |  C   |  D   |  E   |  F   |
@@ -117,6 +41,8 @@ OPCODES = [
 ]
 
 BYTEORDER = "big"
+
+PAGE_WRAPPING_BUG = False
 
 """MOT-6502 Processor."""
 
@@ -195,20 +121,27 @@ def P_read_byte(self: dict, address: int) -> int:
     data = M___getitem__(self["memory"], address)
     return self, data
 
-def P_read_word(self: dict, address: int) -> int:
+def P_read_word(self: dict, address: int, page_wrapping_bug: bool = False) -> int:
     """
     Read a word from memory.
 
     :param address: The address to read from
+    :param page_wrapping_bug: Wether the page wrapping bug affects this read
     :return: int
     """
+    if page_wrapping_bug and ((address & 0x00FF) == 0x00FF):
+        second_address = address & 0xFF00
+        # Read the first byte of the same page
+        # instead of the first byte on the next page (which would be correct)
+    else:
+        second_address = address + 1
     if BYTEORDER == "little":
-        self, t1 = P_read_byte(self, address    )
-        self, t2 = P_read_byte(self, address + 1)
+        self, t1 = P_read_byte(self, address       )
+        self, t2 = P_read_byte(self, second_address)
         data = t1 | (t2  << 8)
     else:
-        self, t1 = P_read_byte(self, address    )
-        self, t2 = P_read_byte(self, address + 1)
+        self, t1 = P_read_byte(self, address       )
+        self, t2 = P_read_byte(self, second_address)
         data = (t1 << 8) | t2
     return self, data
 
@@ -239,30 +172,6 @@ def P_write_word(self: dict, address: int, value: int) -> None:
         self, _ = P_write_byte(self, address + 1,  value       & 0xFF)
     return self, None
 
-def P_read_register_a(self: dict) -> int:
-    """
-    Read the A register.
-
-    :return: int
-    """
-    return self, self["reg_a"]
-
-def P_read_register_x(self: dict) -> int:
-    """
-    Read the X register.
-
-    :return: int
-    """
-    return self, self["reg_x"]
-
-def P_read_register_y(self: dict) -> int:
-    """
-    Read the Y register.
-
-    :return: int
-    """
-    return self, self["reg_y"]
-
 def P_read_flags_register(self: dict) -> None:
     return self, (
         int(self["flag_n"]) << 7
@@ -274,6 +183,17 @@ def P_read_flags_register(self: dict) -> None:
       | int(self["flag_z"]) << 1
       | int(self["flag_c"]) << 0
     )
+
+def P_set_flags_register(self: dict, data: int) -> None:
+    self["flag_n"] = bool((data >> 7) & 0b1)
+    self["flag_v"] = bool((data >> 6) & 0b1)
+    # Bit 5: Unused Bit
+    # Bit 4: The 'B' Flag can't be set to 1 from the stack
+    self["flag_d"] = bool((data >> 3) & 0b1)
+    self["flag_i"] = bool((data >> 2) & 0b1)
+    self["flag_z"] = bool((data >> 1) & 0b1)
+    self["flag_c"] = bool((data >> 0) & 0b1)
+    return self, None
 
 def P_push_byte(self: dict, data: int) -> None:
     """
@@ -346,10 +266,7 @@ def P_evaluate_flag_z(self: dict, data: int) -> None:
     :param data: The data to evaluate
     :return: None
     """
-    if data == 0:
-        self["flag_z"] = True
-    else:
-        self["flag_z"] = False
+    self["flag_z"] = (data == 0)
     return self, None
 
 def P_evaluate_flags_nz_a(self: dict) -> None:
@@ -390,14 +307,6 @@ def P_evaluate_flags_nz(self: dict, data: int) -> None:
     self, _ = P_evaluate_flag_z(self, data)
     return self, None
 
-#def P_execute(self: dict, cycles: int = 0) -> None:
-#    """
-#    Execute code for X amount of cycles. Or until a breakpoint is reached.
-#
-#    :param cycles: The number of cycles to execute
-#    :return: None
-#    """
-#    while (self["cycles"] < cycles) or (cycles == 0):
 def P_execute(self: dict, instructions: int = 0) -> None:
     """
     Execute code for x instructions. Or until a breakpoint is rached.
@@ -408,76 +317,75 @@ def P_execute(self: dict, instructions: int = 0) -> None:
     while (self["instructions"] < instructions):
         self, opcode_num = P_fetch_byte(self)
         opcode = OPCODES[opcode_num]
-        addressing_mode = help_addRESSING[opcode_num]
+        addressing_mode = ADDRESSING[opcode_num]
+        try:
+            instr_func = eval("P_ins" + opcode)
+        except NameError:
+            raise NotImplementedError(f"Opcode '{opcode}' doesn't exist or is not implemented.")
 
-        instr_func = eval("P_ins" + opcode)
-        assert instr_func != None, f"Opcode '{opcode}' is not implemented."
-
-        if addressing_mode in {"imm", "zp", "zpx", "abs", "abx", "aby", "inx", "iny",   "rel"}:
+        if (addressing_mode in {"imm", "zp", "zpx", "zpy", "abs", "abx", "aby", "ind", "inx", "iny", "rel", "acc"}) and (opcode not in {"JMP", "JSR"}):
             addressing_func = eval("P_addressing_" + addressing_mode)
-            self, operand, args = addressing_func(self, opcode)
+            self, operand, args = addressing_func(self)
             self, _ = instr_func(self, operand, *args)
         else:
             self, _ = instr_func(self, addressing_mode)
         
         self["instructions"] += 1
-        
-        #instruction_info = INSTRUCTIONS_INFO[opcode]
-        #self["cycles"] += instruction_info["cycles"]
-        #
-        #penalties = instruction_info["penalties"].split(" ")
-        #for penalty in penalties:
-        #    if penalty == "other_page_1":
-        #        if other_page: self["cycles"] += 1
-        #    if penalty == "other_page_2":
-        #        if other_page: self["cycles"] += 2
-        #    if penalty == "same_page_1":
-        #        if not other_page: self["cycles"] += 1
     return self, None
 
 """Addressing for the MOT-6502"""
-def P_addressing_imm(self, opcode):
+def P_addressing_imm(self):
     """Immediate Addressing - Fetches operand directly from the instruction."""
     self, operand = P_fetch_byte(self)
     return self, operand, ()  # No memory address involved
 
-def P_addressing_zp(self, opcode):
+def P_addressing_zp(self):
     """Zero Page Addressing - Fetches operand from zero page address."""
     self, address = P_fetch_byte(self)
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_zpx(self, opcode):
+def P_addressing_zpx(self):
     """Zero Page,X Addressing - Fetches operand from zero page address + X (wraps at 0xFF)."""
     self, base_address = P_fetch_byte(self)
-    self, offset = P_read_register_x(self)
-    address = (base_address + offset) & 0xFF  # Zero-page wrap-around
+    address = (base_address + self["reg_x"]) & 0xFF  # Zero-page wrap-around
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_abs(self, opcode):
+def P_addressing_zpy(self):
+    """Zero Page,Y Addressing - Fetches operand from zero page address + Y (wraps at 0xFF)."""
+    self, base_address = P_fetch_byte(self)
+    address = (base_address + self["reg_y"]) & 0xFF  # Zero-page wrap-around
+    self, operand = P_read_byte(self, address)
+    return self, operand, (address,)
+
+def P_addressing_abs(self):
     """Absolute Addressing - Fetches operand from a full 16-bit address."""
     self, address = P_fetch_word(self)
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_abx(self, opcode):
+def P_addressing_abx(self):
     """Absolute,X Addressing - Adds X to a 16-bit base address."""
     self, base_address = P_fetch_word(self)
-    self, offset = P_read_register_x(self)
-    address = (base_address + offset) & 0xFFFF  # Full address wrap-around
+    address = (base_address + self["reg_x"]) & 0xFFFF  # Full address wrap-around
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_aby(self, opcode):
+def P_addressing_aby(self):
     """Absolute,Y Addressing - Adds Y to a 16-bit base address."""
     self, base_address = P_fetch_word(self)
-    self, offset = P_read_register_y(self)
-    address = (base_address + offset) & 0xFFFF
+    address = (base_address + self["reg_y"]) & 0xFFFF
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_inx(self, opcode):
+def P_addressing_ind(self):
+    """ Indexed Indirect Addressing. """
+    self, address = P_fetch_word(self)  # Fetch 16-bit address
+    self, operand = P_read_byte(self, address)  # Read from computed address
+    return self, operand, (address,)
+
+def P_addressing_inx(self):
     """
     Indexed Indirect Addressing (Indirect,X) - Fetches a 16-bit pointer from zero-page.
 
@@ -488,13 +396,12 @@ def P_addressing_inx(self, opcode):
     4. Read operand from final address.
     """
     self, base_address = P_fetch_byte(self)
-    self, offset = P_read_register_x(self)
-    zp_address = (base_address + offset) & 0xFF  # Zero-page wrap-around
+    zp_address = (base_address + self["reg_x"]) & 0xFF  # Zero-page wrap-around
     self, final_address = P_read_word(self, zp_address)  # Fetch 16-bit address
     self, operand = P_read_byte(self, final_address)  # Read from computed address
     return self, operand, (final_address,)
 
-def P_addressing_iny(self, opcode):
+def P_addressing_iny(self):
     """
     Indirect Indexed Addressing (Indirect),Y - Reads 16-bit pointer from zero-page, then adds Y.
 
@@ -506,33 +413,27 @@ def P_addressing_iny(self, opcode):
     """
     self, base_address = P_fetch_byte(self)
     self, zp_pointer = P_read_word(self, base_address)  # Fetch 16-bit address
-    self, offset = P_read_register_y(self)
-    final_address = (zp_pointer + offset) & 0xFFFF  # Handle wrapping
+    final_address = (zp_pointer + self["reg_y"]) & 0xFFFF  # Handle wrapping
     self, operand = P_read_byte(self, final_address)  # Read from computed address
     return self, operand, (final_address,)
 
-def P_addressing_rel(self, opcode):
+def P_addressing_rel(self):
     self, operand = P_fetch_byte(self)
     return self, operand, ()
 
+def P_addressing_acc(self):
+    return self, self["reg_a"], ()
+
 """Subroutines for thr MOT-6502"""
 def help_bcd_to_decimal(bcd):
-    decimal = 0
-    place = 1
-    while bcd > 0:
-        decimal += (bcd % 10) * place
-        bcd //= 10
-        place *= 10
-    return decimal
+    tens = (bcd >> 4) & 0xF  # Extract the tens digit
+    ones = bcd & 0xF         # Extract the ones digit
+    return tens * 10 + ones
 
 def help_decimal_to_bcd(decimal):
-    bcd = 0
-    place = 1
-    while decimal > 0:
-        bcd += (decimal % 10) * place
-        decimal //= 10
-        place *= 10
-    return bcd
+    tens = decimal // 10     # Extract the tens digit
+    ones = decimal % 10      # Extract the ones digit
+    return (tens << 4) | ones  # Combine into BCD format
 
 def help_add(a, b, bcd:bool):
     if bcd:
@@ -576,8 +477,7 @@ def P_ins_adc(self: dict, operand: int, *args) -> None:
     ADC - Add with Carry.
     :return: None
     """
-    self, old_value = P_read_register_a(self)
-    self["reg_a"] = help_add(old_value, operand, bcd=self["flag_d"])
+    self["reg_a"] = help_add(self["reg_a"], operand, bcd=self["flag_d"])
     self, _ = P_evaluate_flags_nz_a(self)
     return self, None
 
@@ -586,8 +486,7 @@ def P_ins_and(self: dict, operand: int, *args) -> None:
     AND - Logical AND.
     :return: None
     """
-    self, old_value = P_read_register_a(self)
-    self["reg_a"] = old_value & operand
+    self["reg_a"] &= operand
     self, _ = P_evaluate_flags_nz_a(self)
     return self, None
 
@@ -632,7 +531,7 @@ def P_ins_bit(self: dict, operand: int, *args) -> None:
     BIT - Bit Test.
     :return: None
     """
-    self, old_value = P_read_register_a(self)
+    old_value = self["reg_a"]
     self["flag_n"] = bool(old_value & 0b10000000)
     self["flag_v"] = bool(old_value & 0b01000000)
     self["flag_z"] = (old_value & operand) == 0
@@ -671,11 +570,7 @@ def P_ins_brk(self: dict, mode: str) -> None:
     :return: None
     """
     # Increment PC (BRK uses an implied operand, so PC should skip the next byte)
-    self["program_counter"] += 1
-
-    # Push the Program Counter onto the stack (high byte first)
-    program_counter = self["program_counter"]
-    self, _ = P_push_word(self, program_counter)
+    self, _ = P_push_word(self, self["program_counter"])
 
     # Push the Status Register onto the stack with Break flag set (B = 1)
     self["flag_b"] = True
@@ -734,7 +629,6 @@ def P_ins_cli(self: dict, mode: str) -> None:
     self["flag_i"] = False
     return self, None
 
-
 def P_ins_clv(self: dict, mode: str) -> None:
     """
     CLV - Clear Overflow Flag.
@@ -749,7 +643,7 @@ def P_ins_cmp(self: dict, operand: int, *args) -> None:
     CMP - Compare.
     :return: None
     """
-    self, reg_a = P_read_register_a(self)
+    reg_a = self["reg_a"]
     self, _ = P_evaluate_flags_nz(self, reg_a - operand)
     self, _ = P_evaluate_flag_c(self, ISGREATEREQUAL(reg_a, operand, bcd=self["flag_d"]))
     return self, None
@@ -759,7 +653,7 @@ def P_ins_cpx(self: dict, operand: int, *args) -> None:
     CPX - Compare X Register.
     :return: None
     """
-    self, reg_x = P_read_register_x(self)
+    reg_x = self["reg_x"]
     self, _ = P_evaluate_flags_nz(self, reg_x - operand)
     self, _ = P_evaluate_flag_c(self, ISGREATEREQUAL(reg_x, operand, bcd=self["flag_d"]))
     return self, None
@@ -769,9 +663,325 @@ def P_ins_cpy(self: dict, operand: int, *args) -> None:
     CPY - Compare Y Register.
     :return: None
     """
-    self, reg_y = P_read_register_y(self)
+    reg_y = self["reg_y"]
     self, _ = P_evaluate_flags_nz(self, reg_y - operand)
     self, _ = P_evaluate_flag_c(self, ISGREATEREQUAL(reg_y, operand, bcd=self["flag_d"]))
+    return self, None
+
+def P_ins_dec(self: dict, operand: int, address: int, *args) -> None:
+    """
+    DEC - Decrement Memory.
+
+    :return: None
+    """
+    self, _ = P_write_byte(self, address, operand - 1)
+    self, _ = P_evaluate_flags_nz(self  , operand - 1)
+    return self, None
+
+def P_ins_dex(self: dict, mode: str) -> None:
+    """
+    DEX - Decrement X Register.
+
+    :return: None
+    """
+    self["reg_x"] -= 1
+    self, _ = P_evaluate_flags_nz_x(self)
+    return self, None
+
+def P_ins_dey(self: dict, mode: str) -> None:
+    """
+    DEY - Decrement Y Register.
+
+    :return: None
+    """
+    self["reg_y"] -= 1
+    self, _ = P_evaluate_flags_nz_y(self)
+    return self, None
+
+def P_ins_eor(self: dict, operand: int, *args) -> None:
+    """
+    XOR - Logical XOR.
+    :return: None
+    """
+    self["reg_a"] ^= operand
+    self, _ = P_evaluate_flags_nz_a(self)
+    return self, None
+
+def P_ins_inc_zp(self: dict, operand: int, address: int, *args) -> None:
+    """
+    INC - Increment Memory.
+
+    :return: None
+    """
+    self, _ = P_write_byte(self, address, operand + 1)
+    self, _ = P_evaluate_flags_nz(self  , operand + 1)
+    return self, None
+
+def P_ins_inx(self: dict, mode: str) -> None:
+    """
+    INX - Increment X Register.
+
+    :return: None
+    """
+    self["reg_x"] += 1
+    self, _ = P_evaluate_flags_nz_x(self)
+    return self, None
+
+def P_ins_iny(self: dict, mode: str) -> None:
+    """
+    INY - Increment Y Register.
+
+    :return: None
+    """
+    self["reg_y"] += 1 
+    self, _ = P_evaluate_flags_nz_y(self)
+    return self, None
+
+def P_ins_jmp(self: dict, mode: str) -> None:
+    """
+    JMP - Jump to New Location.
+    :return: None
+    """
+    match mode:
+        case "abs":
+            self, program_counter = P_fetch_word(self)
+        case "ind":
+            self, pointer_address = P_fetch_word(self)
+            self, program_counter = P_read_word(self, pointer_address, page_wrapping_bug=PAGE_WRAPPING_BUG)
+    self["program_counter"] = program_counter
+    return self, None
+
+def P_ins_jsr(self: dict, mode: str) -> None:
+    """
+    JSR - Jump to New Location Saving Return Addres.
+    :return: None
+    """
+    match mode:
+        case "abs":
+            self, program_counter = P_fetch_word(self)
+    self, _ = P_push_word(self, self["program_counter"]) # P_fetch_word changes self["program_counter"], so push here
+    self["program_counter"] = program_counter
+    return self, None
+
+def P_ins_lda(self: dict, operand: int, *args) -> None:
+    """
+    LDA - Load Accumulator.
+
+    :return: None
+    """
+    self["reg_a"] = operand
+    self, _ = P_evaluate_flags_nz_a(self)
+    return self, None
+
+def P_ins_ldx(self: dict, operand: int, *args) -> None:
+    """
+    LDX - Load X Register.
+
+    :return: None
+    """
+    self, self["reg_x"] = operand
+    self, _ = P_evaluate_flags_nz_x(self)
+    return self, None
+
+def P_ins_ldy(self: dict, operand: int, *args) -> None:
+    """
+    LDY - Load Y Register.
+
+    :return: None
+    """
+    self, self["reg_y"] = operand
+    self, _ = P_evaluate_flags_nz_y(self)
+    return self, None
+
+####################################################################################################
+# TODO                                                                                             #
+def P_ins_lsr(self: dict, operand: int, *args) -> None:
+    """
+    LSR - Logical Shift Right.
+    :return: None
+    """
+    self["reg_a"] = operand >> 1
+    self["flag_c"] = bool(operand & 0b1)
+    self, _ = P_evaluate_flags_nz_a(self)
+    return self, None
+# TODO                                                                                             #
+#####################################################################################################
+
+def P_ins_ora(self: dict, operand: int, *args) -> None:
+    """
+    ORA - Logical OR.
+    :return: None
+    """
+    self["reg_a"] |= operand
+    self, _ = P_evaluate_flags_nz_a(self)
+
+def P_ins_pha(self: dict, mode: str) -> None:
+    """
+    PHA - Push Accumulator.
+
+    TODO: Add check to not cross page
+
+    :return: None
+    """
+    self, _ = P_push_byte(self, self["reg_a"])
+    return self, None
+
+def P_ins_pla(self: dict, mode: str) -> None:
+    """
+    PLA - Pull Accumulator.
+
+    TODO: Add check to not cross page
+
+    :return: None
+    """
+    self, self["reg_a"] = P_pop_byte(self)
+    self, _ = P_evaluate_flags_nz_a(self)
+    return self, None
+
+def P_ins_php(self: dict, mode: str) -> None:
+    """
+    Push Processor Status.
+
+    return: None
+    """
+    self, flags = P_read_flags_register(self)
+    self, _ = P_push_byte(self, flags)
+    return self, None
+
+def P_ins_plp(self: dict, mode: str) -> None:
+    """
+    Pull Processor Status.
+
+    TODO: Implement instruction and test
+    TODO: Add check to not cross page
+
+    :return: None
+    """
+    self, flags = P_pop_byte(self)
+    self, _ = P_set_flags_register(self, flags)
+    return self, None
+
+#ROL
+
+#ROR
+
+#RTI
+
+#RTS
+
+#SBC
+
+def P_ins_sec(self: dict, mode: str) -> None:
+    """
+    SEC - Set Carry Flag.
+
+    :return: None
+    """
+    self["flag_c"] = True
+    return self, None
+
+def P_ins_sed(self: dict, mode: str) -> None:
+    """
+    SED - Set Decimal Mode.
+
+    :return: None
+    """
+    self["flag_d"] = True
+    return self, None
+
+def P_ins_sei(self: dict, mode: str) -> None:
+    """
+    SEI - Set Interrupt Disable.
+
+    :return: None
+    """
+    self["flag_i"] = True
+    return self, None
+
+def P_ins_sta(self: dict, operand: int, address:int, *args) -> None:
+    """
+    STA - Store Accumulator.
+
+    :return: None
+    """
+    self, _ = P_write_byte(self, address, self["reg_a"])
+    return self, None
+
+def P_ins_stx(self: dict, operand: int, address:int, *args) -> None:
+    """
+    STA - Store X Register.
+
+    :return: None
+    """
+    self, _ = P_write_byte(self, address, self["reg_x"])
+    return self, None
+
+def P_ins_sty(self: dict, operand: int, address:int, *args) -> None:
+    """
+    STA - Store Y Register.
+
+    :return: None
+    """
+    self, _ = P_write_byte(self, address, self["reg_y"])
+    return self, None
+
+def P_ins_tax(self: dict, mode: str) -> None:
+    """
+    TAX - Transfer Accumulator to X.
+
+    :return: None
+    """
+    self["reg_x"] = self["reg_a"]
+    self, _ = P_evaluate_flags_nz_x(self)
+    return self, None
+
+def P_ins_tay(self: dict, mode: str) -> None:
+    """
+    TAY - Transfer Accumulator to Y.
+
+    :return: None
+    """
+    self["reg_y"] = self["reg_a"]
+    self, _ = P_evaluate_flags_nz_y(self)
+    return self, None
+
+def P_ins_tsx(self: dict, mode: str) -> None:
+    """
+    TSX - Transfer Stack Pointer to X.
+
+    :return: None
+    """
+    self["reg_x"] = self["stack_pointer"]
+    self, _ = P_evaluate_flags_nz_x(self)
+    return self, None
+
+def P_ins_txa(self: dict, mode: str) -> None:
+    """
+    TXA - Transfer Register X to Accumulator.
+
+    :return: None
+    """
+    self["reg_a"] = self["reg_x"]
+    self, _ = P_evaluate_flags_nz_a(self)
+    return self, None
+
+def P_ins_txs(self: dict, mode: str) -> None:
+    """
+    TXS - Transfer Register X to Stack Pointer.
+
+    :return: None
+    """
+    self["stack_pointer"] = self["reg_x"]
+    return self, None
+
+def P_ins_tya(self: dict, mode: str) -> None:
+    """
+    TYA - Transfer Register Y to Accumulator.
+
+    :return: None
+    """
+    self["reg_a"] = self["reg_y"]
+    self, _ = P_evaluate_flags_nz_a(self)
     return self, None
 
 ############################################################################################################
@@ -838,4 +1048,3 @@ def M___setitem__(self: dict, address: int, value: int) -> dict:
         raise ValueError("Value too large")
     self["memory"][address] = value
     return self
-g

@@ -994,6 +994,7 @@ def P_ins_dey_imp(self: dict) -> None:
     self, _ = P_evaluate_flags_nz_y(self)
     return self, None
 
+
 def P_ins_eor_imm(self: dict) -> None:
     """
     XOR - Logical XOR, Immediate.
