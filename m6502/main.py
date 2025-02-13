@@ -34,11 +34,11 @@ OPCODES = [
     "bcc", "sta", "nop", "nop", "sty", "sta", "stx", "sax", "tya", "sta", "txs", "nop", "nop", "sta", "nop", "nop",  # 9
     "ldy", "lda", "ldx", "lax", "ldy", "lda", "ldx", "lax", "tay", "lda", "tax", "nop", "ldy", "lda", "ldx", "lax",  # A
     "bcs", "lda", "nop", "lax", "ldy", "lda", "ldx", "lax", "clv", "lda", "tsx", "lax", "ldy", "lda", "ldx", "lax",  # B
-    "cpy", "cmp", "nop", "dcp", "cpy", "cmp", "dec", "dcp", "iny", "cmp", "dex", "nop", "cpy", "cmp", "dec", "dcp",  # C
-    "bne", "cmp", "nop", "dcp", "nop", "cmp", "dec", "dcp", "cld", "cmp", "nop", "dcp", "nop", "cmp", "dec", "dcp",  # D
-    "cpx", "sbc", "nop", "isb", "cpx", "sbc", "inc", "isb", "inx", "sbc", "nop", "sbc", "cpx", "sbc", "inc", "isb",  # E
-    "beq", "sbc", "nop", "isb", "nop", "sbc", "inc", "isb", "sed", "sbc", "nop", "isb", "nop", "sbc", "inc", "isb",  # F
-]
+    "cpy", "cmp", "nop", "nop", "cpy", "cmp", "dec", "nop", "iny", "cmp", "dex", "nop", "cpy", "cmp", "dec", "dcp",  # C
+    "bne", "cmp", "nop", "nop", "nop", "cmp", "dec", "nop", "cld", "cmp", "nop", "dcp", "nop", "cmp", "dec", "dcp",  # D
+    "cpx", "sbc", "nop", "nop", "cpx", "sbc", "inc", "nop", "inx", "sbc", "nop", "sbc", "cpx", "sbc", "inc", "nop",  # E
+    "beq", "sbc", "nop", "nop", "nop", "sbc", "inc", "nop", "sed", "sbc", "nop", "nop", "nop", "sbc", "inc", "nop",  # F
+] # UPDATE
 
 BYTEORDER = "big"
 

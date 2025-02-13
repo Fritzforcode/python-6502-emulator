@@ -1,4 +1,4 @@
-text = open("main.py").read()
+text = open("new.py").read()
 lines = text.splitlines()
 
 import ast
@@ -12,14 +12,16 @@ new = []
 code = ""
 for node in tree.body:
     if isinstance(node, ast.FunctionDef):
-        if node.name.endswith("_iny"):
+        if node.name.startswith("P_ins"):#node.name.endswith("_iny"):
             new.append(node)
+            print(node.name.removeprefix("P_ins_"))
             #print(node.name, 100*"=")
             #print(node.lineno, node.end_lineno)
-            seg ="\n".join(lines[node.lineno-1:node.end_lineno+1])
-            code += seg
+            #seg ="\n".join(lines[node.lineno-1:node.end_lineno+1])
+            #seg ="\n".join(lines[node.lineno-1:node.lineno]+[""])
+            #code += seg
             #print(seg)
 
 new_module = ast.Module(new)
 #print(ast.dump(new_module, indent=4))
-print(code)
+#print(code)

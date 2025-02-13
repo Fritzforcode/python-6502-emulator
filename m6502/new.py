@@ -185,14 +185,14 @@ def P_read_flags_register(self: dict) -> None:
     )
 
 def P_set_flags_register(self: dict, data: int) -> None:
-    self["flag_n"] = bool((data >> 7) & 0b1)
-    self["flag_v"] = bool((data >> 6) & 0b1)
+    self["flag_n"] = bool((data >> 7) & 0b00000001)
+    self["flag_v"] = bool((data >> 6) & 0b00000001)
     # Bit 5: Unused Bit
     # Bit 4: The 'B' Flag can't be set to 1 from the stack
-    self["flag_d"] = bool((data >> 3) & 0b1)
-    self["flag_i"] = bool((data >> 2) & 0b1)
-    self["flag_z"] = bool((data >> 1) & 0b1)
-    self["flag_c"] = bool((data >> 0) & 0b1)
+    self["flag_d"] = bool((data >> 3) & 0b00000001)
+    self["flag_i"] = bool((data >> 2) & 0b00000001)
+    self["flag_z"] = bool((data >> 1) & 0b00000001)
+    self["flag_c"] = bool((data >> 0) & 0b00000001)
     return self, None
 
 def P_push_byte(self: dict, data: int) -> None:
@@ -326,7 +326,7 @@ def P_execute(self: dict, instructions: int = 0) -> None:
         if (addressing_mode in {"imm", "zp", "zpx", "zpy", "abs", "abx", "aby", "ind", "inx", "iny", "rel", "acc"}) and (opcode not in {"JMP", "JSR"}):
             addressing_func = eval("P_addressing_" + addressing_mode)
             self, operand, args = addressing_func(self)
-            self, _ = instr_func(self, operand, *args)
+            self, _ = instr_func(self, adressing_mode, operand, *args)
         else:
             self, _ = instr_func(self, addressing_mode)
         
@@ -334,58 +334,58 @@ def P_execute(self: dict, instructions: int = 0) -> None:
     return self, None
 
 """Addressing for the MOT-6502"""
-def P_addressing_imm(self):
+def P_addressing_imm(self: dict):
     """Immediate Addressing - Fetches operand directly from the instruction."""
     self, operand = P_fetch_byte(self)
     return self, operand, ()  # No memory address involved
 
-def P_addressing_zp(self):
+def P_addressing_zp(self: dict):
     """Zero Page Addressing - Fetches operand from zero page address."""
     self, address = P_fetch_byte(self)
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_zpx(self):
+def P_addressing_zpx(self: dict):
     """Zero Page,X Addressing - Fetches operand from zero page address + X (wraps at 0xFF)."""
     self, base_address = P_fetch_byte(self)
     address = (base_address + self["reg_x"]) & 0xFF  # Zero-page wrap-around
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_zpy(self):
+def P_addressing_zpy(self: dict):
     """Zero Page,Y Addressing - Fetches operand from zero page address + Y (wraps at 0xFF)."""
     self, base_address = P_fetch_byte(self)
     address = (base_address + self["reg_y"]) & 0xFF  # Zero-page wrap-around
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_abs(self):
+def P_addressing_abs(self: dict):
     """Absolute Addressing - Fetches operand from a full 16-bit address."""
     self, address = P_fetch_word(self)
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_abx(self):
+def P_addressing_abx(self: dict):
     """Absolute,X Addressing - Adds X to a 16-bit base address."""
     self, base_address = P_fetch_word(self)
     address = (base_address + self["reg_x"]) & 0xFFFF  # Full address wrap-around
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_aby(self):
+def P_addressing_aby(self: dict):
     """Absolute,Y Addressing - Adds Y to a 16-bit base address."""
     self, base_address = P_fetch_word(self)
     address = (base_address + self["reg_y"]) & 0xFFFF
     self, operand = P_read_byte(self, address)
     return self, operand, (address,)
 
-def P_addressing_ind(self):
+def P_addressing_ind(self: dict):
     """ Indexed Indirect Addressing. """
     self, address = P_fetch_word(self)  # Fetch 16-bit address
     self, operand = P_read_byte(self, address)  # Read from computed address
     return self, operand, (address,)
 
-def P_addressing_inx(self):
+def P_addressing_inx(self: dict):
     """
     Indexed Indirect Addressing (Indirect,X) - Fetches a 16-bit pointer from zero-page.
 
@@ -401,7 +401,7 @@ def P_addressing_inx(self):
     self, operand = P_read_byte(self, final_address)  # Read from computed address
     return self, operand, (final_address,)
 
-def P_addressing_iny(self):
+def P_addressing_iny(self: dict):
     """
     Indirect Indexed Addressing (Indirect),Y - Reads 16-bit pointer from zero-page, then adds Y.
 
@@ -417,11 +417,11 @@ def P_addressing_iny(self):
     self, operand = P_read_byte(self, final_address)  # Read from computed address
     return self, operand, (final_address,)
 
-def P_addressing_rel(self):
+def P_addressing_rel(self: dict):
     self, operand = P_fetch_byte(self)
     return self, operand, ()
 
-def P_addressing_acc(self):
+def P_addressing_acc(self: dict):
     return self, self["reg_a"], ()
 
 """Subroutines for thr MOT-6502"""
@@ -445,7 +445,7 @@ def help_add(a, b, bcd:bool):
     else:
         return (a + b)    & 0xFF
 
-def SUB(a, b, bcd:bool):
+def help_sub(a, b, bcd:bool):
     if bcd:
         decimal1 = help_bcd_to_decimal(a)
         decimal2 = help_bcd_to_decimal(b)
@@ -455,7 +455,7 @@ def SUB(a, b, bcd:bool):
     else:
         return (a + b)    & 0xFF
 
-def ISGREATEREQUAL(a, b, bcd:bool):
+def help_is_greater_equal(a, b, bcd:bool):
     if bcd:
         a = help_bcd_to_decimal(a)
         b = help_bcd_to_decimal(b)
@@ -472,16 +472,17 @@ def P_ins_nop(self: dict, mode: str) -> None:
     """
     return self, None
 
-def P_ins_adc(self: dict, operand: int, *args) -> None:
+def P_ins_adc(self: dict, mode: str, operand: int, *args) -> None:
     """
     ADC - Add with Carry.
     :return: None
     """
+    operand += int(self["flag_c"])
     self["reg_a"] = help_add(self["reg_a"], operand, bcd=self["flag_d"])
     self, _ = P_evaluate_flags_nz_a(self)
     return self, None
 
-def P_ins_and(self: dict, operand: int, *args) -> None:
+def P_ins_and(self: dict, mode: str, operand: int, *args) -> None:
     """
     AND - Logical AND.
     :return: None
@@ -490,16 +491,21 @@ def P_ins_and(self: dict, operand: int, *args) -> None:
     self, _ = P_evaluate_flags_nz_a(self)
     return self, None
 
-def P_ins_asl(self: dict, operand: int, *args) -> None:
+def P_ins_asl(self: dict, mode: str, operand: int, address: int, *args) -> None:
     """
     ASL - Arithmetic Shift Left.
     :return: None
     """
-    self["reg_a"] = operand << 1
-    self, _ = P_evaluate_flags_nz_a(self)
+    self["flag_c"] = bool(operand & 0b000000010000000)
+    result = (operand << 1) & 0xFF
+    if mode == "acc":
+        self["reg_a"] = result
+    else:
+        self, _ = P_write_byte(self, address, result)
+    self, _ = P_evaluate_flags_nz(self, result)
     return self, None
 
-def P_ins_bcc(self: dict, operand: int, *args) -> None:
+def P_ins_bcc(self: dict, mode: str, operand: int, *args) -> None:
     """
     BCC - Branch if Carry Clear.
     :return: None
@@ -508,7 +514,7 @@ def P_ins_bcc(self: dict, operand: int, *args) -> None:
         self["program_counter"] += operand
     return self, None
 
-def P_ins_bcs(self: dict, operand: int, *args) -> None:
+def P_ins_bcs(self: dict, mode: str, operand: int, *args) -> None:
     """
     BCS - Branch if Carry Set.
     :return: None
@@ -517,7 +523,7 @@ def P_ins_bcs(self: dict, operand: int, *args) -> None:
         self["program_counter"] += operand
     return self, None
 
-def P_ins_beq(self: dict, operand: int, *args) -> None:
+def P_ins_beq(self: dict, mode: str, operand: int, *args) -> None:
     """
     BEQ - Branch if Equal.
     :return: None
@@ -526,18 +532,18 @@ def P_ins_beq(self: dict, operand: int, *args) -> None:
         self["program_counter"] += operand
     return self, None
 
-def P_ins_bit(self: dict, operand: int, *args) -> None:
+def P_ins_bit(self: dict, mode: str, operand: int, *args) -> None:
     """
     BIT - Bit Test.
     :return: None
     """
     old_value = self["reg_a"]
-    self["flag_n"] = bool(old_value & 0b10000000)
+    self["flag_n"] = bool(old_value & 0b000000010000000)
     self["flag_v"] = bool(old_value & 0b01000000)
     self["flag_z"] = (old_value & operand) == 0
     return self, None
 
-def P_ins_bmi(self: dict, operand: int, *args) -> None:
+def P_ins_bmi(self: dict, mode: str, operand: int, *args) -> None:
     """
     BMI - Branch if Minus.
     :return: None
@@ -546,7 +552,7 @@ def P_ins_bmi(self: dict, operand: int, *args) -> None:
         self["program_counter"] += operand
     return self, None
 
-def P_ins_bne(self: dict, operand: int, *args) -> None:
+def P_ins_bne(self: dict, mode: str, operand: int, *args) -> None:
     """
     BNE - Branch if Not Equal.
     :return: None
@@ -555,7 +561,7 @@ def P_ins_bne(self: dict, operand: int, *args) -> None:
         self["program_counter"] += operand
     return self, None
 
-def P_ins_bpl(self: dict, operand: int, *args) -> None:
+def P_ins_bpl(self: dict, mode: str, operand: int, *args) -> None:
     """
     BPL - Branch if Positive.
     :return: None
@@ -584,7 +590,7 @@ def P_ins_brk(self: dict, mode: str) -> None:
     self["flag_i"] = 1
     return self, None
 
-def P_ins_bvc(self: dict, operand: int, *args) -> None:
+def P_ins_bvc(self: dict, mode: str, operand: int, *args) -> None:
     """
     BVC - Branch if Overflow Clear.
     :return: None
@@ -593,7 +599,7 @@ def P_ins_bvc(self: dict, operand: int, *args) -> None:
         self["program_counter"] += operand
     return self, None
 
-def P_ins_bvs(self: dict, operand: int, *args) -> None:
+def P_ins_bvs(self: dict, mode: str, operand: int, *args) -> None:
     """
     BVS - Branch if Overflow Set.
     :return: None
@@ -638,37 +644,37 @@ def P_ins_clv(self: dict, mode: str) -> None:
     self["flag_v"] = False
     return self, None
 
-def P_ins_cmp(self: dict, operand: int, *args) -> None:
+def P_ins_cmp(self: dict, mode: str, operand: int, *args) -> None:
     """
     CMP - Compare.
     :return: None
     """
     reg_a = self["reg_a"]
     self, _ = P_evaluate_flags_nz(self, reg_a - operand)
-    self, _ = P_evaluate_flag_c(self, ISGREATEREQUAL(reg_a, operand, bcd=self["flag_d"]))
+    self, _ = P_evaluate_flag_c(self, help_is_greater_equal(reg_a, operand, bcd=self["flag_d"]))
     return self, None
 
-def P_ins_cpx(self: dict, operand: int, *args) -> None:
+def P_ins_cpx(self: dict, mode: str, operand: int, *args) -> None:
     """
     CPX - Compare X Register.
     :return: None
     """
     reg_x = self["reg_x"]
     self, _ = P_evaluate_flags_nz(self, reg_x - operand)
-    self, _ = P_evaluate_flag_c(self, ISGREATEREQUAL(reg_x, operand, bcd=self["flag_d"]))
+    self, _ = P_evaluate_flag_c(self, help_is_greater_equal(reg_x, operand, bcd=self["flag_d"]))
     return self, None
 
-def P_ins_cpy(self: dict, operand: int, *args) -> None:
+def P_ins_cpy(self: dict, mode: str, operand: int, *args) -> None:
     """
     CPY - Compare Y Register.
     :return: None
     """
     reg_y = self["reg_y"]
     self, _ = P_evaluate_flags_nz(self, reg_y - operand)
-    self, _ = P_evaluate_flag_c(self, ISGREATEREQUAL(reg_y, operand, bcd=self["flag_d"]))
+    self, _ = P_evaluate_flag_c(self, help_is_greater_equal(reg_y, operand, bcd=self["flag_d"]))
     return self, None
 
-def P_ins_dec(self: dict, operand: int, address: int, *args) -> None:
+def P_ins_dec(self: dict, mode: str, operand: int, address: int, *args) -> None:
     """
     DEC - Decrement Memory.
 
@@ -698,7 +704,7 @@ def P_ins_dey(self: dict, mode: str) -> None:
     self, _ = P_evaluate_flags_nz_y(self)
     return self, None
 
-def P_ins_eor(self: dict, operand: int, *args) -> None:
+def P_ins_eor(self: dict, mode: str, operand: int, *args) -> None:
     """
     XOR - Logical XOR.
     :return: None
@@ -707,7 +713,7 @@ def P_ins_eor(self: dict, operand: int, *args) -> None:
     self, _ = P_evaluate_flags_nz_a(self)
     return self, None
 
-def P_ins_inc_zp(self: dict, operand: int, address: int, *args) -> None:
+def P_ins_inc(self: dict, mode: str, operand: int, address: int, *args) -> None:
     """
     INC - Increment Memory.
 
@@ -763,7 +769,7 @@ def P_ins_jsr(self: dict, mode: str) -> None:
     self["program_counter"] = program_counter
     return self, None
 
-def P_ins_lda(self: dict, operand: int, *args) -> None:
+def P_ins_lda(self: dict, mode: str, operand: int, *args) -> None:
     """
     LDA - Load Accumulator.
 
@@ -773,7 +779,7 @@ def P_ins_lda(self: dict, operand: int, *args) -> None:
     self, _ = P_evaluate_flags_nz_a(self)
     return self, None
 
-def P_ins_ldx(self: dict, operand: int, *args) -> None:
+def P_ins_ldx(self: dict, mode: str, operand: int, *args) -> None:
     """
     LDX - Load X Register.
 
@@ -783,7 +789,7 @@ def P_ins_ldx(self: dict, operand: int, *args) -> None:
     self, _ = P_evaluate_flags_nz_x(self)
     return self, None
 
-def P_ins_ldy(self: dict, operand: int, *args) -> None:
+def P_ins_ldy(self: dict, mode: str, operand: int, *args) -> None:
     """
     LDY - Load Y Register.
 
@@ -793,21 +799,21 @@ def P_ins_ldy(self: dict, operand: int, *args) -> None:
     self, _ = P_evaluate_flags_nz_y(self)
     return self, None
 
-####################################################################################################
-# TODO                                                                                             #
-def P_ins_lsr(self: dict, operand: int, *args) -> None:
+def P_ins_lsr(self: dict, mode: str, operand: int, address: int, *args) -> None:
     """
     LSR - Logical Shift Right.
     :return: None
     """
-    self["reg_a"] = operand >> 1
-    self["flag_c"] = bool(operand & 0b1)
-    self, _ = P_evaluate_flags_nz_a(self)
+    self["flag_c"] = bool(operand & 0b00000001)
+    result = (operand >> 1)
+    if mode == "acc":
+        self["reg_a"] = result
+    else:
+        self, _ = P_write_byte(self, address, result)
+    self, _ = P_evaluate_flag_z(self, result)
     return self, None
-# TODO                                                                                             #
-#####################################################################################################
 
-def P_ins_ora(self: dict, operand: int, *args) -> None:
+def P_ins_ora(self: dict, mode: str, operand: int, *args) -> None:
     """
     ORA - Logical OR.
     :return: None
@@ -861,15 +867,64 @@ def P_ins_plp(self: dict, mode: str) -> None:
     self, _ = P_set_flags_register(self, flags)
     return self, None
 
-#ROL
+def P_ins_rol(self: dict, mode: str, operand: int, address: int, *args) -> None:
+    """
+    ROL - Rotate One Bit Left.
+    :return: None
+    """
+    old_carry = self["flag_c"]
+    self["flag_c"] = bool(operand & 0b10000000)
+    result = ((operand << 1) & 0xFF) | int(old_carry)
+    if mode == "acc":
+        self["reg_a"] = result
+    else:
+        self, _ = P_write_byte(self, address, result)
+    self, _ = P_evaluate_flags_nz(self, result)
+    return self, None
 
-#ROR
+def P_ins_ror(self: dict, mode: str, operand: int, address: int, *args) -> None:
+    """
+    ROR - Rotate One Bit Right.
+    :return: None
+    """
+    old_carry = self["flag_c"]
+    self["flag_c"] = bool(operand & 0b00000001)
+    result = (int(old_carry) << 7) | (operand >> 1)
+    if mode == "acc":
+        self["reg_a"] = result
+    else:
+        self, _ = P_write_byte(self, address, result)
+    self, _ = P_evaluate_flags_nz(self, result)
+    return self, None
 
-#RTI
+def P_ins_rti(self: dict, mode: str) -> None:
+    """
+    RTI - Return from Interrupt.
+    :return: None
+    """
+    self, flags = P_pop_byte(self)
+    self, _ = P_set_flags_register(self, flags)
+    self, self["program_counter"] = P_pop_word(self)
+    return self, None
 
-#RTS
+def P_ins_rts(self: dict, mode: str) -> None:
+    """
+    RTI - Return from Subroutine.
+    :return: None
+    """
+    self, return_address = P_pop_word(self)
+    self["program_counter"] = (return_address + 1) & 0xFFFF
+    return self, None
 
-#SBC
+def P_ins_sbc(self: dict, mode: str, operand: int, *args) -> None:
+    """
+    SBC - Subtract with Carry.
+    :return: None
+    """
+    operand += int(self["flag_c"])
+    self["reg_a"] = help_sub(self["reg_a"], operand, bcd=self["flag_d"])
+    self, _ = P_evaluate_flags_nz_a(self)
+    return self, None
 
 def P_ins_sec(self: dict, mode: str) -> None:
     """
@@ -898,7 +953,7 @@ def P_ins_sei(self: dict, mode: str) -> None:
     self["flag_i"] = True
     return self, None
 
-def P_ins_sta(self: dict, operand: int, address:int, *args) -> None:
+def P_ins_sta(self: dict, mode: str, operand: int, address:int, *args) -> None:
     """
     STA - Store Accumulator.
 
@@ -907,7 +962,7 @@ def P_ins_sta(self: dict, operand: int, address:int, *args) -> None:
     self, _ = P_write_byte(self, address, self["reg_a"])
     return self, None
 
-def P_ins_stx(self: dict, operand: int, address:int, *args) -> None:
+def P_ins_stx(self: dict, mode: str, operand: int, address:int, *args) -> None:
     """
     STA - Store X Register.
 
@@ -916,7 +971,7 @@ def P_ins_stx(self: dict, operand: int, address:int, *args) -> None:
     self, _ = P_write_byte(self, address, self["reg_x"])
     return self, None
 
-def P_ins_sty(self: dict, operand: int, address:int, *args) -> None:
+def P_ins_sty(self: dict, mode: str, operand: int, address:int, *args) -> None:
     """
     STA - Store Y Register.
 
