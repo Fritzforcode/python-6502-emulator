@@ -153,7 +153,7 @@ def P_write_byte(self: dict, address: int, value: int) -> None:
     :param value: The value to write
     :return: None
     """
-    memory = M___setitem__(self["memory"], address, value & 0xFF)
+    self["memory"] = M___setitem__(self["memory"], address, value & 0xFF)
     return self, None
 
 def P_write_word(self: dict, address: int, value: int) -> None:
@@ -486,6 +486,9 @@ def help_is_greater_equal(a, b, bcd:bool):
         b = help_bcd_to_decimal(b)
     return a >= b
 
+def help_twos_complement(num):
+    return (num - 0x100) if (num >= 0b10000000) else (num)
+
 ############################################################################################################
 #                                          MOT-6502 Instructions.                                          #
 ###########################################################################################################
@@ -536,7 +539,7 @@ def P_ins_bcc(self: dict, mode: str, operand: int, *args) -> None:
     :return: None
     """
     if not self["flag_c"]:
-        self["program_counter"] += operand
+        self["program_counter"] += help_twos_complement(operand)
     return self, None
 
 def P_ins_bcs(self: dict, mode: str, operand: int, *args) -> None:
@@ -545,7 +548,7 @@ def P_ins_bcs(self: dict, mode: str, operand: int, *args) -> None:
     :return: None
     """
     if self["flag_c"]:
-        self["program_counter"] += operand
+        self["program_counter"] += help_twos_complement(operand)
     return self, None
 
 def P_ins_beq(self: dict, mode: str, operand: int, *args) -> None:
@@ -554,7 +557,7 @@ def P_ins_beq(self: dict, mode: str, operand: int, *args) -> None:
     :return: None
     """
     if self["flag_z"]:
-        self["program_counter"] += operand
+        self["program_counter"] += help_twos_complement(operand)
     return self, None
 
 def P_ins_bit(self: dict, mode: str, operand: int, *args) -> None:
@@ -574,7 +577,7 @@ def P_ins_bmi(self: dict, mode: str, operand: int, *args) -> None:
     :return: None
     """
     if self["flag_n"]:
-        self["program_counter"] += operand
+        self["program_counter"] += help_twos_complement(operand)
     return self, None
 
 def P_ins_bne(self: dict, mode: str, operand: int, *args) -> None:
@@ -583,7 +586,7 @@ def P_ins_bne(self: dict, mode: str, operand: int, *args) -> None:
     :return: None
     """
     if not self["flag_z"]:
-        self["program_counter"] += operand
+        self["program_counter"] += help_twos_complement(operand)
     return self, None
 
 def P_ins_bpl(self: dict, mode: str, operand: int, *args) -> None:
@@ -592,7 +595,7 @@ def P_ins_bpl(self: dict, mode: str, operand: int, *args) -> None:
     :return: None
     """
     if not self["flag_n"]:
-        self["program_counter"] += operand
+        self["program_counter"] += help_twos_complement(operand)
     return self, None
 
 def P_ins_brk(self: dict, mode: str) -> None:
@@ -622,7 +625,7 @@ def P_ins_bvc(self: dict, mode: str, operand: int, *args) -> None:
     :return: None
     """
     if not self["flag_v"]:
-        self["program_counter"] += operand
+        self["program_counter"] += help_twos_complement(operand)
     return self, None
 
 def P_ins_bvs(self: dict, mode: str, operand: int, *args) -> None:
@@ -631,7 +634,7 @@ def P_ins_bvs(self: dict, mode: str, operand: int, *args) -> None:
     :return: None
     """
     if self["flag_v"]:
-        self["program_counter"] += operand
+        self["program_counter"] += help_twos_complement(operand)
     return self, None
 
 def P_ins_clc(self: dict, mode: str) -> None:
@@ -1088,7 +1091,7 @@ def M___init__(size: int = None) -> dict:
     if size > 0x10000:
         raise ValueError("Memory size is not valid")
     self["size"] = size
-    self["memory"] = [0] * self["size"]
+    self["memory"] = {}
     return self
 
 def M___getitem__(self: dict, address: int) -> int:
@@ -1100,7 +1103,7 @@ def M___getitem__(self: dict, address: int) -> int:
     """
     if 0x0000 < address > 0xFFFF:
         raise ValueError("Memory address is not valid")
-    return self["memory"][address]
+    return self["memory"].get(address, 0)
 
 def M_read_word(self: dict, address: int) -> int:
     """
