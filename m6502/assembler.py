@@ -55,10 +55,11 @@ class ClosingBracketToken(Token):
     def __init__(self): super().__init__(value=None)
 
 class LabelReference:
-    def __init__(self, name):
+    def __init__(self, name: str, is_word: bool):
         self.name = name
+        self.is_word = is_word
     def __repr__(self):
-        return f"LabelReference{self.name}"
+        return f"LabelReference[{'W' if self.is_word else 'B'}]({self.name})"
 
 string = """
 START   LDA #$10   ; 'START' is a label pointing to this line
@@ -163,18 +164,19 @@ for token in tokens:
 print("ordered", ordered_tokens)
 
 bytes = []
+label_addresses = {}
 for line_tokens in ordered_tokens:
     assert len(line_tokens) >= 1
     first_token  = line_tokens[0] if (0 in range(len(line_tokens))) else None
     second_token = line_tokens[1] if (1 in range(len(line_tokens))) else None
     first_token_value  = None if (first_token  is None) else first_token.value
-    second_token_value = None if (second_token is None) else second_token.value.lower()
+    second_token_value = None if (second_token is None) else second_token.value
     if not isinstance(first_token, AlnumToken): raise Exception()
     
     assert isinstance(first_token, AlnumToken)
-    if isinstance(second_token, AlnumToken) and (second_token_value in OPCODE_NAMES):
+    if isinstance(second_token, AlnumToken) and (second_token_value is not None) and (second_token_value.lower() in OPCODE_NAMES):
         label       = first_token_value
-        opcode_name = second_token_value
+        opcode_name = second_token_value.lower()
         remaining_tokens = line_tokens[2:]
     else:
         label       = None
@@ -230,11 +232,14 @@ for line_tokens in ordered_tokens:
             operand         = None
             operand_bits    = None
         elif isinstance(first_token, AlnumToken) and (second_token is None):
-            addressing_mode = "rel"
-            operand         = LabelReference(first_token_value)
-            operand_bits    = 8
             if opcode_name in {"jmp", "jsr"}:
                 addressing_mode = "abs"
+                operand         = LabelReference(first_token_value, is_word=True )
+                operand_bits    = 16
+            else:
+                addressing_mode = "rel"
+                operand         = LabelReference(first_token_value, is_word=False)
+                operand_bits    = 8
         else: raise Exception()
     else: raise Exception()
     id = (addressing_mode, opcode_name)
@@ -260,6 +265,27 @@ for line_tokens in ordered_tokens:
         instr_bytes.append(operand)
     elif operand is None: pass
     else: raise Exception()
-    print(instr_bytes)
-    
+    if label is not None:
+        label_addresses[label] = len(bytes)
+    bytes += instr_bytes
+    print(label, instr_bytes)
 
+print(bytes, label_addresses)
+final_bytes = []
+for i, item in enumerate(bytes):
+    if isinstance(item, LabelReference):
+        address = label_addresses[item.name]
+        if item.is_word:
+            if (operand >= 0xFFFF) or (operand < -0x8000): raise ValueError()
+            if BYTEORDER == "little":
+                final_bytes.append((address >> 0) & 0xFF)
+                final_bytes.append((address >> 8) & 0xFF)
+            else:
+                final_bytes.append((address >> 8) & 0xFF)
+                final_bytes.append((address >> 0) & 0xFF)
+        else:
+            if (operand >= 0xFF) or (operand < -0x80): raise ValueError()
+            final_bytes.append(address)
+    else:
+        final_bytes.append(item)
+print(final_bytes, label_addresses)
