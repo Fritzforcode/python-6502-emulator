@@ -19,6 +19,8 @@ OPCODES = [
 ]
 OPCODE_NAMES = [i[1] for i in OPCODES]
 
+BYTEORDER = "little"
+
 
 from enum import Enum
 class ParserState(Enum):
@@ -51,6 +53,12 @@ class OpeningBracketToken(Token):
 
 class ClosingBracketToken(Token):
     def __init__(self): super().__init__(value=None)
+
+class LabelReference:
+    def __init__(self, name):
+        self.name = name
+    def __repr__(self):
+        return f"LabelReference{self.name}"
 
 string = """
 START   LDA #$10   ; 'START' is a label pointing to this line
@@ -157,23 +165,25 @@ print("ordered", ordered_tokens)
 bytes = []
 for line_tokens in ordered_tokens:
     assert len(line_tokens) >= 1
-    first_token  = line_tokens[0]
+    first_token  = line_tokens[0] if (0 in range(len(line_tokens))) else None
     second_token = line_tokens[1] if (1 in range(len(line_tokens))) else None
+    first_token_value  = None if (first_token  is None) else first_token.value
+    second_token_value = None if (second_token is None) else second_token.value.lower()
     if not isinstance(first_token, AlnumToken): raise Exception()
-
-    if isinstance(second_token, AlnumToken) and (second_token.value in OPCODE_NAMES):
-        label       = first_token.value
-        opcode_name = second_token.value
+    
+    assert isinstance(first_token, AlnumToken)
+    if isinstance(second_token, AlnumToken) and (second_token_value in OPCODE_NAMES):
+        label       = first_token_value
+        opcode_name = second_token_value
         remaining_tokens = line_tokens[2:]
     else:
         label       = None
-        opcode_name = first_token.value
+        opcode_name = first_token_value.lower()
         remaining_tokens = line_tokens[1:]
-    
-    first_token  = line_tokens[0] if (0 in range(len(line_tokens))) else None
-    second_token = line_tokens[1] if (1 in range(len(line_tokens))) else None
-    third_token  = line_tokens[2] if (2 in range(len(line_tokens))) else None
-    fourth_token = line_tokens[3] if (3 in range(len(line_tokens))) else None
+    first_token  = remaining_tokens[0] if (0 in range(len(remaining_tokens))) else None
+    second_token = remaining_tokens[1] if (1 in range(len(remaining_tokens))) else None
+    third_token  = remaining_tokens[2] if (2 in range(len(remaining_tokens))) else None
+    fourth_token = remaining_tokens[3] if (3 in range(len(remaining_tokens))) else None
     first_token_value  = None if (first_token  is None) else first_token.value
     second_token_value = None if (second_token is None) else second_token.value
     third_token_value  = None if (third_token  is None) else third_token.value
@@ -221,17 +231,35 @@ for line_tokens in ordered_tokens:
             operand_bits    = None
         elif isinstance(first_token, AlnumToken) and (second_token is None):
             addressing_mode = "rel"
-            operand         = first_token_value
+            operand         = LabelReference(first_token_value)
             operand_bits    = 8
+            if opcode_name in {"jmp", "jsr"}:
+                addressing_mode = "abs"
         else: raise Exception()
     else: raise Exception()
     id = (addressing_mode, opcode_name)
-    if id not in OPCODES: raise Exception()
+    if id not in OPCODES: raise Exception(id)
+    
+    instr_bytes = []
     opcode_num = OPCODES.index(id)
-    bytes.append(opcode_num)
-    if operand is not None:
-        bytes.append()
-    
-    
+    instr_bytes.append(opcode_num)
+    if isinstance(operand, int):
+        if operand_bits == 8:
+            if (operand >= 0xFF) or (operand < -0x80): raise ValueError()
+            instr_bytes.append(operand)
+        elif operand_bits == 16:
+            if (operand >= 0xFFFF) or (operand < -0x8000): raise ValueError()
+            if BYTEORDER == "little":
+                instr_bytes.append((operand >> 0) & 0xFF)
+                instr_bytes.append((operand >> 8) & 0xFF)
+            else:
+                instr_bytes.append((operand >> 8) & 0xFF)
+                instr_bytes.append((operand >> 0) & 0xFF)
+        else: raise Exception()
+    elif isinstance(operand, LabelReference):
+        instr_bytes.append(operand)
+    elif operand is None: pass
+    else: raise Exception()
+    print(instr_bytes)
     
 
